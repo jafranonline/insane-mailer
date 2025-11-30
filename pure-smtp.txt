@@ -1,0 +1,330 @@
+
+Easy SMTP Queue - Specification Document
+
+1. Overview
+Name: Easy SMTP Queue
+Slug: easy-smtp-queue
+Prefix: esq_
+Minimum PHP: 7.4
+Minimum WP: 5.8
+Tested up to: 6.7
+Purpose: Lightweight WordPress SMTP plugin with queue-based email sending, supporting multiple providers via REST API (no heavy composer dependencies).
+
+2. Core Features
+
+Single provider configuration (not multiple)
+Queue-based or direct sending (user choice)
+Queue = Log (single table serves both purposes)
+Retry mechanism with configurable attempts
+Rate limiting per provider
+Priority emails (bypass queue)
+Attachment handling (file path storage)
+Auto-cleanup old logs
+Test email functionality
+Webhook endpoints for bounces/complaints
+Export logs (CSV)
+Multisite support
+
+
+3. Supported Providers
+ProviderMethodAuth TypeAmazon SESREST APIAccess Key + SecretMailgunREST APIAPI Key + DomainSendGridREST APIAPI KeyBrevo (Sendinblue)REST APIAPI KeySparkPostREST APIAPI KeyNetcoreREST APIAPI KeyPostmarkREST APIServer TokenElastic EmailREST APIAPI KeySMTP.comREST APIAPI Key + ChannelGoogle WorkspaceSMTPOAuth2 or App PasswordMicrosoft 365SMTPOAuth2 or App PasswordGeneric SMTPSMTPUser + Password
+
+4. Database Schema
+Table: {prefix}_esq_emails
+ColumnTypeDescriptionidBIGINT UNSIGNEDPrimary keystatusENUMpending, processing, sent, failed, bounced, complainedpriorityEasyINT1=high (bypass), 2=normal, 3=lowto_emailVARCHAR(255)Recipientto_nameVARCHAR(255)Recipient namefrom_emailVARCHAR(255)Senderfrom_nameVARCHAR(255)Sender namereply_toVARCHAR(255)Reply-to addresssubjectVARCHAR(255)Subject linebody_htmlLONGTEXTHTML contentbody_plainTEXTPlain text contentheadersTEXTJSON serialized headersattachmentsTEXTJSON array of file pathsattemptsEasyINTRetry countmax_attemptsEasyINTMax retries allowedscheduled_atDATETIMEWhen to send (for delayed)sent_atDATETIMEWhen actually sentproviderVARCHAR(50)Provider usedprovider_responseTEXTAPI response JSONmessage_idVARCHAR(255)Provider message IDerror_messageTEXTLast errorcreated_atDATETIMEQueued timeupdated_atDATETIMELast update
+Indexes: status, priority, scheduled_at, created_at, to_email, message_id
+
+5. Settings Structure
+php[
+    // Provider
+    'provider'           => 'ses',
+    'credentials'        => [], // Provider-specific
+
+    // From
+    'from_email'         => 'noreply@example.com',
+    'from_name'          => 'Site Name',
+    'force_from'         => true,
+
+    // Sending
+    'send_mode'          => 'queue', // queue|direct
+    'auto_plain_text'    => true,
+
+    // Queue
+    'queue_runner'       => 'wp_cron', // wp_cron|manual|external
+    'external_token'     => 'random_token_here',
+    'bulk_limit'         => 50, // emails per run
+    'rate_limit'         => 14, // per second
+
+    // Retry
+    'max_retries'        => 3,
+    'retry_delay'        => 300, // seconds
+
+    // Priority bypass (hook names)
+    'priority_bypass'    => [
+        'retrieve_password',
+        'woocommerce_order_status_completed',
+    ],
+
+    // Cleanup
+    'auto_delete_days'   => 14, // 0 = never
+
+    // Multisite
+    'network_mode'       => 'per_site', // global|per_site
+    'allow_site_override'=> false,
+]
+```
+
+---
+
+## 6. Flows
+
+### 6.1 Email Sending Flow
+```
+wp_mail() called
+    ↓
+esq_mailer intercepts (phpmailer_init hook)
+    ↓
+Check send_mode
+    ↓
+┌─────────────────┬──────────────────┐
+│ Direct Mode     │ Queue Mode       │
+├─────────────────┼──────────────────┤
+│ Check priority  │ Insert to DB     │
+│ Send via        │ status=pending   │
+│ provider        │ Return true      │
+│ Log result      │                  │
+└─────────────────┴──────────────────┘
+```
+
+### 6.2 Queue Processing Flow
+```
+Cron triggered (WP/External/Manual)
+    ↓
+Lock queue (prevent duplicate runs)
+    ↓
+Fetch pending emails
+    - WHERE status = 'pending'
+    - AND scheduled_at <= NOW()
+    - AND attempts < max_attempts
+    - ORDER BY priority ASC, created_at ASC
+    - LIMIT bulk_limit
+    ↓
+For each email:
+    ↓
+    Set status = 'processing'
+    ↓
+    Apply rate limiting (sleep if needed)
+    ↓
+    Send via provider
+    ↓
+    ┌─────────────┬─────────────┐
+    │ Success     │ Failure     │
+    ├─────────────┼─────────────┤
+    │ status=sent │ attempts++  │
+    │ sent_at=NOW │ Check retry │
+    │ Store       │ status=     │
+    │ message_id  │ pending or  │
+    │             │ failed      │
+    └─────────────┴─────────────┘
+    ↓
+Release lock
+```
+
+### 6.3 Priority Bypass Flow
+```
+wp_mail() called
+    ↓
+Check current filter/action hook
+    ↓
+Hook in priority_bypass list?
+    ↓
+┌─────────┬─────────────┐
+│ Yes     │ No          │
+├─────────┼─────────────┤
+│ Send    │ Follow      │
+│ direct  │ send_mode   │
+│ now     │ setting     │
+└─────────┴─────────────┘
+```
+
+### 6.4 Webhook Flow
+```
+Provider sends webhook
+    ↓
+POST /esq/v1/webhook/{provider}
+    ↓
+Validate signature/auth
+    ↓
+Parse event type (bounce/complaint/delivery)
+    ↓
+Find email by message_id
+    ↓
+Update status (bounced/complained)
+    ↓
+Return 200 OK
+```
+
+### 6.5 Cleanup Flow
+```
+Daily WP Cron
+    ↓
+Check auto_delete_days > 0
+    ↓
+DELETE FROM esq_emails
+WHERE status IN (sent, failed, bounced, complained)
+AND created_at < (NOW - auto_delete_days)
+    ↓
+Delete orphan attachments from /uploads/esq-attachments/
+```
+
+### 6.6 Attachment Flow
+```
+wp_mail() with attachments
+    ↓
+Copy files to /wp-content/uploads/esq-attachments/{email_id}/
+    ↓
+Store paths in attachments JSON column
+    ↓
+On send: attach from stored paths
+    ↓
+On cleanup: delete attachment folder
+```
+
+---
+
+## 7. REST API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/esq/v1/settings` | Get settings |
+| POST | `/esq/v1/settings` | Update settings |
+| POST | `/esq/v1/settings/test-connection` | Test provider credentials |
+| POST | `/esq/v1/test-email` | Send test email |
+| GET | `/esq/v1/emails` | List emails (paginated) |
+| GET | `/esq/v1/emails/{id}` | Single email details |
+| POST | `/esq/v1/emails/{id}/retry` | Retry failed email |
+| DELETE | `/esq/v1/emails/{id}` | Delete email |
+| POST | `/esq/v1/queue/process` | Manual queue trigger |
+| GET | `/esq/v1/queue/status` | Queue stats |
+| GET | `/esq/v1/export` | Export CSV |
+| POST | `/esq/v1/cron/{token}` | External cron endpoint |
+| POST | `/esq/v1/webhook/{provider}` | Provider webhooks |
+| GET | `/esq/v1/stats` | Dashboard stats |
+
+---
+
+## 8. Admin Pages (SolidJS)
+
+### 8.1 Dashboard
+- Total sent/failed/pending counts
+- Recent emails list
+- Quick stats chart
+
+### 8.2 Emails (Queue/Log)
+- Filterable table (status, date range, search)
+- Bulk actions (retry, delete)
+- View email details modal
+- Export button
+
+### 8.3 Settings
+- Provider selection + credentials form
+- From email/name
+- Send mode toggle
+- Queue runner config
+- Rate limit, retry settings
+- Auto-delete config
+- Priority bypass hooks
+
+### 8.4 Test Email
+- To, Subject, Message fields
+- Send button
+- Result display
+
+---
+
+## 9. Hooks & Filters
+
+**Actions:**
+- `esq_email_sent` - after successful send
+- `esq_email_failed` - after failure
+- `esq_email_queued` - after queuing
+- `esq_email_bounce` - webhook bounce received
+- `esq_email_complaint` - webhook complaint received
+- `esq_before_send` - before sending
+- `esq_queue_processed` - after queue run
+
+**Filters:**
+- `esq_should_queue` - override queue decision
+- `esq_priority` - modify email priority
+- `esq_from_email` - modify from email
+- `esq_from_name` - modify from name
+- `esq_credentials` - modify provider credentials
+- `esq_bulk_limit` - modify per-run limit
+- `esq_rate_limit` - modify rate limit
+
+---
+
+## 10. File Structure
+```
+Easy-smtp-queue/
+├── Easy-smtp-queue.php         # Bootstrap
+├── uninstall.php               # Cleanup on uninstall
+├── includes/
+│   ├── Activator.php           # Activation hooks
+│   ├── Deactivator.php         # Deactivation hooks
+│   ├── Mailer.php              # PHPMailer integration
+│   ├── Queue.php               # Queue manager
+│   ├── Cron.php                # Cron handlers
+│   ├── Admin.php               # Admin menu/pages
+│   ├── Rest/
+│   │   ├── Controller.php      # Base controller
+│   │   ├── SettingsController.php
+│   │   ├── EmailsController.php
+│   │   ├── QueueController.php
+│   │   └── WebhookController.php
+│   ├── Providers/
+│   │   ├── ProviderInterface.php
+│   │   ├── AbstractProvider.php
+│   │   ├── SES.php
+│   │   ├── Mailgun.php
+│   │   ├── SendGrid.php
+│   │   ├── Brevo.php
+│   │   ├── Postmark.php
+│   │   └── GenericSMTP.php
+│   └── Helpers/
+│       ├── RateLimiter.php
+│       ├── Attachment.php
+│       └── Logger.php
+├── app/                        # SolidJS admin
+│   ├── src/
+│   │   ├── index.jsx
+│   │   ├── pages/
+│   │   ├── components/
+│   │   └── api/
+│   ├── package.json
+│   └── vite.config.js
+├── assets/
+│   └── dist/                   # Compiled JS/CSS
+└── languages/                  # i18n
+```
+
+---
+
+## 11. Multisite Logic
+```
+Network Admin:
+    ↓
+Set network_mode
+    ↓
+┌────────────────┬─────────────────────┐
+│ global         │ per_site            │
+├────────────────┼─────────────────────┤
+│ Single config  │ Each site has own   │
+│ for all sites  │ config              │
+│                │                     │
+│ Sites use      │ allow_site_override │
+│ network        │ = true: site can    │
+│ provider       │ use own provider    │
+│                │                     │
+│ Queue table    │ Queue table per     │
+│ per site       │ site (always)       │

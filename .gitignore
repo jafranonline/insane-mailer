@@ -1,0 +1,6 @@
+node_modules/
+assets/
+.DS_Store
+*.log
+.vite/
+easy-smtp-queue.zip

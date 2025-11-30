@@ -1,0 +1,9 @@
+excludes:
+    - .gitignore
+    - node_modules/**
+    - package.json
+    - package-lock.json
+    - vite.config.*
+    - src
+compression: 9
+max_file_size: 10MB

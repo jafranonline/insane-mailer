@@ -1,0 +1,71 @@
+@import "tailwindcss" prefix(im) important;
+
+/* Reset WordPress admin styles inside our app */
+#insane-mailer-app,
+#insane-mailer-app * {
+  box-sizing: border-box;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+#insane-mailer-app h1,
+#insane-mailer-app h2,
+#insane-mailer-app h3 {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+#insane-mailer-app button {
+  cursor: pointer;
+}
+
+#insane-mailer-app input,
+#insane-mailer-app select,
+#insane-mailer-app textarea {
+  font-size: inherit;
+  line-height: inherit;
+}
+#wpcontent {
+    padding-left: 0 !important;
+}
+#insane-mailer-app .wrap {
+    margin: 0;
+}
+body {
+    @apply im:bg-gray-50;
+}
+
+/* Table row hover */
+#insane-mailer-app table tbody tr.im-hoverable:hover td {
+    background-color: rgb(249 250 251) !important;
+}
+
+/* Button hover effects */
+#insane-mailer-app .im-btn-pause:hover {
+    background-color: rgb(254 243 199) !important;
+}
+#insane-mailer-app .im-btn-resume:hover {
+    background-color: rgb(187 247 208) !important;
+}
+
+/* Provider card hover */
+#insane-mailer-app .im-provider-card {
+    transition: all 0.15s ease;
+}
+#insane-mailer-app .im-provider-card:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: rgb(156 163 175) !important;
+}
+
+/* Provider tooltip */
+#insane-mailer-app .im-provider-wrap .im-provider-tooltip {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.15s ease;
+}
+#insane-mailer-app .im-provider-wrap:hover .im-provider-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
