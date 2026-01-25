@@ -1,9 +1,12 @@
 excludes:
     - .gitignore
+    - .git/**
     - node_modules/**
     - package.json
     - package-lock.json
     - vite.config.*
     - src
+    - pak.yml
+    - postcss.config.js
 compression: 9
 max_file_size: 10MB
