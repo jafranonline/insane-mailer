@@ -1,6 +1,6 @@
 === Insane Mailer - SMTP, Email Logs & Queue ===
 Contributors: arraystory
-Tags: smtp, email log, mail, email queue, deliverability
+Tags: smtp, email, mail, mailer, email log
 Requires at least: 6.2
 Tested up to: 6.9
 Stable tag: 1.0.0
