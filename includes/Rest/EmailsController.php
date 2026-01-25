@@ -134,24 +134,22 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 
 		$where_clause = implode( ' AND ', $where );
 
+		// Add table name as first arg for %i placeholder.
+		array_unshift( $args, $table_name );
 		$args[] = $per_page;
 		$args[] = $offset;
 
-		$query = "SELECT * FROM $table_name WHERE $where_clause ORDER BY created_at DESC LIMIT %d OFFSET %d";
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Where clause is safe, built from constants, args spread dynamically.
+		$query = $wpdb->prepare( "SELECT * FROM %i WHERE $where_clause ORDER BY created_at DESC LIMIT %d OFFSET %d", ...$args );
 
-		if ( ! empty( $args ) ) {
-			$query = $wpdb->prepare( $query, ...$args );
-		}
-
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table, prepared above.
 		$emails = $wpdb->get_results( $query );
 
-		$count_args  = array_slice( $args, 0, -2 );
-		$count_query = "SELECT COUNT(*) FROM $table_name WHERE $where_clause";
+		$count_args = array_slice( $args, 0, -2 );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Where clause is safe, built from constants, args spread dynamically.
+		$count_query = $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE $where_clause", ...$count_args );
 
-		if ( ! empty( $count_args ) ) {
-			$count_query = $wpdb->prepare( $count_query, ...$count_args );
-		}
-
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table, prepared above.
 		$total = $wpdb->get_var( $count_query );
 
 		return $this->success_response(
@@ -171,11 +169,9 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$email_id   = $request->get_param( 'id' );
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id = %d",
-				$email_id
-			)
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id )
 		);
 
 		if ( ! $email ) {
@@ -208,21 +204,20 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$email_id   = $request->get_param( 'id' );
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id = %d",
-				$email_id
-			)
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id )
 		);
 
 		if ( ! $email ) {
 			return $this->error_response( 'Email not found', 404 );
 		}
 
-		if ( $email->status !== 'pending' ) {
+		if ( 'pending' !== $email->status ) {
 			return $this->error_response( 'Only pending emails can be paused' );
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$updated = $wpdb->update(
 			$table_name,
 			[ 'status' => 'paused' ],
@@ -231,7 +226,9 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			[ '%d' ]
 		);
 
-		if ( $updated !== false ) {
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+
+		if ( false !== $updated ) {
 			return $this->success_response(
 				[
 					'message' => 'Email paused',
@@ -249,21 +246,20 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$email_id   = $request->get_param( 'id' );
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id = %d",
-				$email_id
-			)
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id )
 		);
 
 		if ( ! $email ) {
 			return $this->error_response( 'Email not found', 404 );
 		}
 
-		if ( $email->status !== 'paused' ) {
+		if ( 'paused' !== $email->status ) {
 			return $this->error_response( 'Only paused emails can be resumed' );
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$updated = $wpdb->update(
 			$table_name,
 			[ 'status' => 'pending' ],
@@ -272,7 +268,9 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			[ '%d' ]
 		);
 
-		if ( $updated !== false ) {
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+
+		if ( false !== $updated ) {
 			return $this->success_response(
 				[
 					'message' => 'Email resumed',
@@ -290,11 +288,9 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$email_id   = $request->get_param( 'id' );
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id = %d",
-				$email_id
-			)
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id )
 		);
 
 		if ( ! $email ) {
@@ -303,11 +299,14 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 
 		$this->delete_email_attachments( $email_id );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$deleted = $wpdb->delete(
 			$table_name,
 			[ 'id' => $email_id ],
 			[ '%d' ]
 		);
+
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
 
 		if ( $deleted ) {
 			return $this->success_response(
@@ -326,15 +325,19 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 
 		$table_name = $wpdb->prefix . 'im_emails';
 
-		$emails = $wpdb->get_results( "SELECT id FROM $table_name" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$emails = $wpdb->get_results( $wpdb->prepare( 'SELECT id FROM %i', $table_name ) );
 
 		foreach ( $emails as $email ) {
 			$this->delete_email_attachments( $email->id );
 		}
 
-		$deleted = $wpdb->query( "TRUNCATE TABLE $table_name" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$deleted = $wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $table_name ) );
 
-		if ( $deleted !== false ) {
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+
+		if ( false !== $deleted ) {
 			return $this->success_response(
 				[
 					'message' => 'All logs cleared successfully',
@@ -353,23 +356,21 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$status = $request->get_param( 'status' ) ?? '';
 
 		$where = '1=1';
-		$args  = [];
+		$args  = [ $table_name ];
 
 		if ( ! empty( $status ) ) {
 			$where = 'status = %s';
-			$args  = [ $status ];
+			$args[] = $status;
 		}
 
-		$query = "SELECT * FROM $table_name WHERE $where ORDER BY created_at DESC LIMIT 1000";
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Where clause is safe, args spread dynamically.
+		$query = $wpdb->prepare( "SELECT * FROM %i WHERE $where ORDER BY created_at DESC LIMIT 1000", ...$args );
 
-		if ( ! empty( $args ) ) {
-			$query = $wpdb->prepare( $query, ...$args );
-		}
-
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table, prepared above.
 		$emails = $wpdb->get_results( $query, ARRAY_A );
 
 		header( 'Content-Type: text/csv' );
-		header( 'Content-Disposition: attachment; filename="esq-emails-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="im-emails-' . gmdate( 'Y-m-d' ) . '.csv"' );
 
 		$output = fopen( 'php://output', 'w' );
 
@@ -381,6 +382,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			}
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Required for output stream.
 		fclose( $output );
 		exit;
 	}
@@ -391,21 +393,21 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, recent emails not cacheable.
 		$recent_emails = $wpdb->get_results(
-			"SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 10"
+			$wpdb->prepare( 'SELECT * FROM %i ORDER BY created_at DESC LIMIT 10', $table_name )
 		);
 
-		$daily_stats = $wpdb->get_results(
-			"SELECT
-				DATE(created_at) as date,
-				COUNT(*) as total,
-				SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-				SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
-			FROM $table_name
-			WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-			GROUP BY DATE(created_at)
-			ORDER BY date DESC"
-		);
+		$cache_key   = 'im_daily_stats_30';
+		$daily_stats = wp_cache_get( $cache_key, 'insane_mailer' );
+
+		if ( false === $daily_stats ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$daily_stats = $wpdb->get_results(
+				$wpdb->prepare( "SELECT DATE(created_at) as date, COUNT(*) as total, SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed FROM %i WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY DATE(created_at) ORDER BY date DESC", $table_name )
+			);
+			wp_cache_set( $cache_key, $daily_stats, 'insane_mailer', 300 );
+		}
 
 		return $this->success_response(
 			[
@@ -427,10 +429,15 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$files = glob( $im_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
-				unlink( $file );
+				wp_delete_file( $file );
 			}
 		}
 
-		rmdir( $im_dir );
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+		$wp_filesystem->rmdir( $im_dir );
 	}
 }

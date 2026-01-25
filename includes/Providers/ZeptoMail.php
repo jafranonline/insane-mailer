@@ -102,8 +102,6 @@ class IM_Provider_ZeptoMail extends IM_Abstract_Provider {
 			];
 		}
 
-		// ZeptoMail doesn't have a dedicated test endpoint
-		// We'll verify by checking if the token format is valid
 		if ( strlen( $api_key ) < 20 ) {
 			return [
 				'success' => false,
@@ -111,9 +109,30 @@ class IM_Provider_ZeptoMail extends IM_Abstract_Provider {
 			];
 		}
 
+		// Make a test request to verify the token.
+		$url = 'https://api.zeptomail.com/v1.1/email/bounce';
+
+		$result = $this->make_request(
+			$url,
+			[
+				'method'  => 'GET',
+				'headers' => [
+					'Authorization' => 'Zoho-enczapikey ' . $api_key,
+				],
+			]
+		);
+
+		// A 401/403 means invalid token, anything else (including 400/404) means token is valid.
+		if ( ! $result['success'] && isset( $result['status_code'] ) && in_array( $result['status_code'], [ 401, 403 ], true ) ) {
+			return [
+				'success' => false,
+				'error'   => 'Invalid ZeptoMail Send Mail Token',
+			];
+		}
+
 		return [
 			'success' => true,
-			'message' => 'ZeptoMail token configured',
+			'message' => 'Connected to ZeptoMail successfully',
 		];
 	}
 }

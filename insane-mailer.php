@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Insane Mailer
- * Plugin URI: https://example.com/insane-mailer
- * Description: Ultra lightweight WordPress SMTP plugin with queue-based email sending. Your LAST ONE.
+ * Plugin URI: https://arraystory.com/insane-mailer
+ * Description: The SMTP plugin you'll never replace. Blazing fast, queue-powered, zero bloat, less than 1MB.
  * Version: 1.0.0
  * Author: ArrayStory
  * Author URI: https://arraystory.com
@@ -10,9 +10,9 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: insane-mailer
  * Domain Path: /languages
- * Requires at least: 5.8
+ * Requires at least: 6.2
  * Requires PHP: 7.4
- * Tested up to: 6.7
+ * Tested up to: 6.9
  *
  * @package InsaneMailer
  */
@@ -33,11 +33,28 @@ require_once IM_PLUGIN_DIR . 'includes/Deactivator.php';
 register_activation_hook( __FILE__, [ 'IM_Activator', 'activate' ] );
 register_deactivation_hook( __FILE__, [ 'IM_Deactivator', 'deactivate' ] );
 
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'im_plugin_action_links' );
+
+/**
+ * Add settings link to plugin action links.
+ *
+ * @param array $links Existing action links.
+ * @return array Modified action links.
+ */
+function im_plugin_action_links( array $links ): array {
+	$settings_link = sprintf(
+		'<a href="%s">%s</a>',
+		admin_url( 'options-general.php?page=insane-mailer' ),
+		__( 'Settings', 'insane-mailer' )
+	);
+	array_unshift( $links, $settings_link );
+	return $links;
+}
+
 /**
  * Initialize plugin core functionality.
  */
 function im_init() {
-	require_once IM_PLUGIN_DIR . 'includes/Helpers/Logger.php';
 	require_once IM_PLUGIN_DIR . 'includes/Mailer.php';
 	require_once IM_PLUGIN_DIR . 'includes/Queue.php';
 	require_once IM_PLUGIN_DIR . 'includes/Cron.php';

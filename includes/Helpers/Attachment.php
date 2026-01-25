@@ -27,11 +27,6 @@ class IM_Attachment {
 
 				if ( copy( $attachment_path, $new_path ) ) {
 					$stored_paths[] = $new_path;
-				} else {
-					IM_Logger::warning( 'Failed to copy attachment', [
-						'source' => $attachment_path,
-						'target' => $new_path,
-					] );
 				}
 			}
 		}
@@ -50,11 +45,16 @@ class IM_Attachment {
 		$files = glob( $im_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
-				unlink( $file );
+				wp_delete_file( $file );
 			}
 		}
 
-		return rmdir( $im_dir );
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+		return $wp_filesystem->rmdir( $im_dir );
 	}
 
 	public static function cleanup_orphaned_attachments() {
@@ -78,22 +78,25 @@ class IM_Attachment {
 				continue;
 			}
 
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, orphan check.
 			$exists = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM $table_name WHERE id = %d",
-					$email_id
-				)
+				$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE id = %d', $table_name, $email_id )
 			);
 
 			if ( ! $exists ) {
 				$files = glob( $dir . '/*' );
 				foreach ( $files as $file ) {
 					if ( is_file( $file ) ) {
-						unlink( $file );
+						wp_delete_file( $file );
 					}
 				}
 
-				if ( rmdir( $dir ) ) {
+				global $wp_filesystem;
+				if ( empty( $wp_filesystem ) ) {
+					require_once ABSPATH . 'wp-admin/includes/file.php';
+					WP_Filesystem();
+				}
+				if ( $wp_filesystem->rmdir( $dir ) ) {
 					$deleted++;
 				}
 			}

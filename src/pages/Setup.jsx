@@ -185,7 +185,7 @@ const providerFields = {
   zeptomail: [{ key: 'zeptomail_api_key', label: 'Send Mail Token' }],
   gmail: [{ key: 'gmail_client_id', label: 'Client ID' }, { key: 'gmail_client_secret', label: 'Client Secret' }],
   outlook: [{ key: 'outlook_client_id', label: 'Client ID' }, { key: 'outlook_client_secret', label: 'Client Secret' }],
-  smtim: [{ key: 'smtp_username', label: 'Username' }, { key: 'smtp_password', label: 'Password' }],
+  smtp: [{ key: 'smtp_username', label: 'Username' }, { key: 'smtp_password', label: 'Password' }],
 };
 
 // Steps:
@@ -462,7 +462,7 @@ export default function Setup({ onComplete }) {
                     {(plugin) => (
                       <button
                         type="button"
-                        class={`im:p-4 im:rounded-lg im:border-2 im:transition-colors im:text-left ${
+                        class={`im:px-4 im:py-3 im:rounded-lg im:border-2 im:transition-colors im:text-left im:h-full im:flex im:flex-col ${
                           plugin.has_settings
                             ? 'im:border-gray-200 hover:im:border-gray-400'
                             : 'im:border-gray-100 im:bg-gray-50 im:opacity-60 im:cursor-not-allowed'
@@ -470,24 +470,27 @@ export default function Setup({ onComplete }) {
                         onClick={() => plugin.has_settings && handleSelectPlugin(plugin)}
                         disabled={loadingPreview() || !plugin.has_settings}
                       >
-                        <div class="im:flex im:items-center im:gap-3 im:mb-2">
-                          <PluginIcon slug={plugin.slug} />
-                          <div>
-                            <span class="im:font-medium im:text-gray-900">{plugin.name}</span>
-                            <Show when={!plugin.has_settings}>
-                              <span class="im:ml-2 im:text-xs im:px-1.5 im:py-0.5 im:bg-gray-200 im:text-gray-500 im:rounded">Not configured</span>
-                            </Show>
+                        <div class="im:flex im:items-start im:gap-2 im:flex-1">
+                          <div class="im:shrink-0 im:mt-0.5">
+                            <PluginIcon slug={plugin.slug} />
+                          </div>
+                          <div class="im:flex-1 im:min-w-0">
+                            <div class="im:flex im:items-center im:gap-2 im:flex-wrap">
+                              <span class="im:font-semibold im:text-gray-900">{plugin.name}</span>
+                              <Show when={!plugin.has_settings}>
+                                <span class="im:text-xs im:px-1.5 im:py-0.5 im:bg-gray-200 im:text-gray-500 im:rounded">Not configured</span>
+                              </Show>
+                            </div>
+                            <p class="im:text-sm im:text-gray-500 im:mt-0.5">
+                              <Show when={plugin.has_settings}>
+                                {providerLabels[plugin.provider] || plugin.provider}
+                              </Show>
+                              <Show when={!plugin.has_settings}>
+                                No settings to import
+                              </Show>
+                            </p>
                           </div>
                         </div>
-                        <p class="im:text-sm im:text-gray-500">
-                          <Show when={plugin.has_settings}>
-                            {providerLabels[plugin.provider] || plugin.provider}
-                            {plugin.from_email && ` • ${plugin.from_email}`}
-                          </Show>
-                          <Show when={!plugin.has_settings}>
-                            No settings to import
-                          </Show>
-                        </p>
                       </button>
                     )}
                   </For>
@@ -495,18 +498,20 @@ export default function Setup({ onComplete }) {
                   {/* Manual configure option */}
                   <button
                     type="button"
-                    class={`im:p-4 im:rounded-lg im:border-2 im:border-gray-200 hover:im:border-gray-400 im:transition-colors im:text-left ${migrations().length === 0 ? 'im:col-span-2' : ''}`}
+                    class={`im:px-4 im:py-3 im:rounded-lg im:border-2 im:border-gray-200 hover:im:border-gray-400 im:transition-colors im:text-left im:h-full im:flex im:flex-col ${migrations().length === 0 ? 'im:col-span-2' : ''}`}
                     onClick={() => setStep('provider')}
                   >
-                    <div class="im:flex im:items-center im:gap-3 im:mb-2">
-                      <div class="im:w-8 im:h-8 im:rounded-lg im:bg-gray-100 im:flex im:items-center im:justify-center">
+                    <div class="im:flex im:items-start im:gap-2 im:flex-1">
+                      <div class="im:w-8 im:h-8 im:rounded-lg im:bg-gray-100 im:flex im:items-center im:justify-center im:shrink-0 im:mt-0.5">
                         <svg class="im:w-5 im:h-5 im:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                       </div>
-                      <span class="im:font-medium im:text-gray-900">Configure Manually</span>
+                      <div class="im:flex-1 im:min-w-0">
+                        <span class="im:font-semibold im:text-gray-900">Configure Manually</span>
+                        <p class="im:text-sm im:text-gray-500 im:mt-0.5">Manual setup</p>
+                      </div>
                     </div>
-                    <p class="im:text-sm im:text-gray-500">Set up a new email provider from scratch</p>
                   </button>
                 </div>
 

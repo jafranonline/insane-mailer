@@ -118,4 +118,16 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ slug }),
   }),
+
+  // Settings tools
+  exportSettings: () => request('/settings/export'),
+
+  importSettings: (settings) => request('/settings/import', {
+    method: 'POST',
+    body: JSON.stringify({ settings }),
+  }),
+
+  resetSettings: () => request('/settings/reset', {
+    method: 'POST',
+  }),
 };

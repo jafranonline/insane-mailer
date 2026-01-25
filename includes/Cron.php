@@ -52,8 +52,6 @@ class IM_Cron {
 			return;
 		}
 
-		IM_Logger::debug( 'WP Cron processing queue' );
-
 		IM_Queue::instance()->process();
 	}
 
@@ -71,17 +69,18 @@ class IM_Cron {
 
 		$cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$auto_delete_days} days" ) );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table cleanup.
 		$email_ids = $wpdb->get_col(
 			$wpdb->prepare(
-				"SELECT id FROM $table_name
+				"SELECT id FROM %i
 				WHERE status IN ('sent', 'failed', 'bounced', 'complained')
 				AND created_at < %s",
+				$table_name,
 				$cutoff_date
 			)
 		);
 
 		if ( empty( $email_ids ) ) {
-			IM_Logger::debug( 'No old emails to clean up' );
 			return;
 		}
 
@@ -89,19 +88,18 @@ class IM_Cron {
 			$this->delete_email_attachments( $email_id );
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table cleanup.
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM $table_name
+				"DELETE FROM %i
 				WHERE status IN ('sent', 'failed', 'bounced', 'complained')
 				AND created_at < %s",
+				$table_name,
 				$cutoff_date
 			)
 		);
 
-		IM_Logger::info( 'Cleaned up old emails', [
-			'deleted_count' => $deleted,
-			'cutoff_date'   => $cutoff_date,
-		] );
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
 
 		$this->cleanup_orphan_attachments();
 	}
@@ -117,11 +115,16 @@ class IM_Cron {
 		$files = glob( $im_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
-				unlink( $file );
+				wp_delete_file( $file );
 			}
 		}
 
-		rmdir( $im_dir );
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+		$wp_filesystem->rmdir( $im_dir );
 	}
 
 	private function cleanup_orphan_attachments() {
@@ -144,23 +147,25 @@ class IM_Cron {
 				continue;
 			}
 
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, orphan check.
 			$exists = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM $table_name WHERE id = %d",
-					$email_id
-				)
+				$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE id = %d', $table_name, $email_id )
 			);
 
 			if ( ! $exists ) {
 				$files = glob( $dir . '/*' );
 				foreach ( $files as $file ) {
 					if ( is_file( $file ) ) {
-						unlink( $file );
+						wp_delete_file( $file );
 					}
 				}
-				rmdir( $dir );
 
-				IM_Logger::debug( 'Removed orphan attachment directory', [ 'email_id' => $email_id ] );
+				global $wp_filesystem;
+				if ( empty( $wp_filesystem ) ) {
+					require_once ABSPATH . 'wp-admin/includes/file.php';
+					WP_Filesystem();
+				}
+				$wp_filesystem->rmdir( $dir );
 			}
 		}
 	}

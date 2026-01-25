@@ -47,8 +47,6 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 	}
 
 	public function process_queue( $request ) {
-		IM_Logger::info( 'Manual queue processing triggered' );
-
 		IM_Queue::instance()->process();
 
 		$stats = IM_Queue::instance()->get_stats();
@@ -67,24 +65,38 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'im_emails';
 
-		$processing = $wpdb->get_var(
-			"SELECT COUNT(*) FROM $table_name WHERE status = 'processing'"
-		);
+		$cache_key   = 'im_queue_status';
+		$cached_data = wp_cache_get( $cache_key, 'insane_mailer' );
 
-		$pending_scheduled = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM $table_name WHERE status = 'pending' AND scheduled_at > %s",
-				current_time( 'mysql' )
-			)
-		);
+		if ( false === $cached_data ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$processing = $wpdb->get_var(
+				$wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'processing'", $table_name )
+			);
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$pending_scheduled = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM %i WHERE status = 'pending' AND scheduled_at > %s",
+					$table_name,
+					current_time( 'mysql' )
+				)
+			);
+
+			$cached_data = [
+				'processing'        => (int) $processing,
+				'pending_scheduled' => (int) $pending_scheduled,
+			];
+			wp_cache_set( $cache_key, $cached_data, 'insane_mailer', 30 );
+		}
 
 		$is_locked = get_transient( 'im_queue_lock' );
 
 		return $this->success_response(
 			[
 				'stats'             => $stats,
-				'processing'        => (int) $processing,
-				'pending_scheduled' => (int) $pending_scheduled,
+				'processing'        => $cached_data['processing'],
+				'pending_scheduled' => $cached_data['pending_scheduled'],
 				'is_locked'         => (bool) $is_locked,
 			]
 		);
@@ -99,8 +111,6 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 		if ( empty( $valid_token ) || $token !== $valid_token ) {
 			return $this->error_response( 'Invalid token', 401 );
 		}
-
-		IM_Logger::info( 'External cron triggered' );
 
 		IM_Queue::instance()->process();
 

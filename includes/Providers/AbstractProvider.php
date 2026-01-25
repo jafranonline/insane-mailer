@@ -66,7 +66,7 @@ abstract class IM_Abstract_Provider implements IM_Provider_Interface {
 			}
 		}
 
-		return $body ?: 'Unknown error';
+		return $body ? $body : 'Unknown error';
 	}
 
 	protected function validate_email( $email ) {

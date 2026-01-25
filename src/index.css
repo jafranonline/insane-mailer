@@ -37,7 +37,16 @@ body {
 }
 
 /* Table row hover */
-#insane-mailer-app table tbody tr.im-hoverable:hover td {
+#insane-mailer-app table tbody tr.im-hoverable:hover td,
+#insane-mailer-app table tbody tr[class*="hoverable"]:hover td {
+    background-color: rgb(249 250 251) !important;
+}
+#insane-mailer-app table tbody tr.im-hoverable,
+#insane-mailer-app table tbody tr[class*="hoverable"] {
+    transition: background-color 0.15s ease;
+}
+#insane-mailer-app table tbody tr.im-hoverable:hover,
+#insane-mailer-app table tbody tr[class*="hoverable"]:hover {
     background-color: rgb(249 250 251) !important;
 }
 
@@ -68,4 +77,24 @@ body {
 #insane-mailer-app .im-provider-wrap:hover .im-provider-tooltip {
     opacity: 1;
     visibility: visible;
+}
+
+/* Dropdown menu items hover */
+#insane-mailer-app .im-actions-dropdown button:hover {
+    background-color: rgb(249 250 251) !important;
+}
+#insane-mailer-app .im-actions-dropdown .im-actions-clear:hover {
+    background-color: rgb(254 242 242) !important;
+}
+
+/* Disabled button */
+#insane-mailer-app button:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+}
+
+/* Checkbox alignment */
+#insane-mailer-app input[type="checkbox"] {
+    margin: 0 !important;
+    vertical-align: middle;
 }

@@ -39,7 +39,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'im_emails';
-		$period     = $request->get_param( 'period' ) ?: 30;
+		$period     = $request->get_param( 'period' ) ? $request->get_param( 'period' ) : 30;
 		$start_date = $request->get_param( 'start_date' );
 		$end_date   = $request->get_param( 'end_date' );
 
@@ -102,17 +102,22 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_summary( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT status, COUNT(*) as count
-				FROM $table_name
-				WHERE created_at BETWEEN %s AND %s
-				GROUP BY status",
-				$start,
-				$end
-			),
-			OBJECT_K
-		);
+		$cache_key = 'im_summary_' . md5( $start . $end );
+		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
+
+		if ( false === $results ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT status, COUNT(*) as count FROM %i WHERE created_at BETWEEN %s AND %s GROUP BY status',
+					$table_name,
+					$start,
+					$end
+				),
+				OBJECT_K
+			);
+			wp_cache_set( $cache_key, $results, 'insane_mailer', 300 );
+		}
 
 		return [
 			'total'      => array_sum( array_column( (array) $results, 'count' ) ),
@@ -129,23 +134,21 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_daily_stats( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT
-					DATE(created_at) as date,
-					SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-					SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-					SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
-					SUM(CASE WHEN status = 'complained' THEN 1 ELSE 0 END) as complained,
-					COUNT(*) as total
-				FROM $table_name
-				WHERE created_at BETWEEN %s AND %s
-				GROUP BY DATE(created_at)
-				ORDER BY date ASC",
-				$start,
-				$end
-			)
-		);
+		$cache_key = 'im_daily_' . md5( $start . $end );
+		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
+
+		if ( false === $results ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT DATE(created_at) as date, SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed, SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced, SUM(CASE WHEN status = 'complained' THEN 1 ELSE 0 END) as complained, COUNT(*) as total FROM %i WHERE created_at BETWEEN %s AND %s GROUP BY DATE(created_at) ORDER BY date ASC",
+					$table_name,
+					$start,
+					$end
+				)
+			);
+			wp_cache_set( $cache_key, $results, 'insane_mailer', 300 );
+		}
 
 		return array_map( function ( $row ) {
 			return [
@@ -162,54 +165,59 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_provider_stats( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT
-					COALESCE(provider, 'default') as provider,
-					SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-					SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-					SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
-					COUNT(*) as total
-				FROM $table_name
-				WHERE created_at BETWEEN %s AND %s
-				AND status IN ('sent', 'failed', 'bounced')
-				GROUP BY provider
-				ORDER BY total DESC",
-				$start,
-				$end
-			)
-		);
+		$cache_key = 'im_provider_' . md5( $start . $end );
+		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
 
-		return array_map( function ( $row ) {
-			$delivered = (int) $row->sent;
-			$total     = $delivered + (int) $row->failed + (int) $row->bounced;
-			$success_rate = $total > 0 ? round( ( $delivered / $total ) * 100, 1 ) : 0;
+		if ( false === $results ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT COALESCE(provider, 'default') as provider, SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed, SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced, COUNT(*) as total FROM %i WHERE created_at BETWEEN %s AND %s AND status IN ('sent', 'failed', 'bounced') GROUP BY provider ORDER BY total DESC",
+					$table_name,
+					$start,
+					$end
+				)
+			);
+			wp_cache_set( $cache_key, $results, 'insane_mailer', 300 );
+		}
 
-			return [
-				'provider'     => $row->provider,
-				'sent'         => $delivered,
-				'failed'       => (int) $row->failed,
-				'bounced'      => (int) $row->bounced,
-				'total'        => $total,
-				'success_rate' => $success_rate,
-			];
-		}, $results );
+		return array_map( [ $this, 'format_provider_stats' ], $results );
+	}
+
+	private function format_provider_stats( $row ) {
+		$delivered    = (int) $row->sent;
+		$total        = $delivered + (int) $row->failed + (int) $row->bounced;
+		$success_rate = $total > 0 ? round( ( $delivered / $total ) * 100, 1 ) : 0;
+
+		return [
+			'provider'     => $row->provider,
+			'sent'         => $delivered,
+			'failed'       => (int) $row->failed,
+			'bounced'      => (int) $row->bounced,
+			'total'        => $total,
+			'success_rate' => $success_rate,
+		];
 	}
 
 	private function get_status_breakdown( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT status, COUNT(*) as count
-				FROM $table_name
-				WHERE created_at BETWEEN %s AND %s
-				GROUP BY status",
-				$start,
-				$end
-			),
-			OBJECT_K
-		);
+		$cache_key = 'im_status_' . md5( $start . $end );
+		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
+
+		if ( false === $results ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT status, COUNT(*) as count FROM %i WHERE created_at BETWEEN %s AND %s GROUP BY status',
+					$table_name,
+					$start,
+					$end
+				),
+				OBJECT_K
+			);
+			wp_cache_set( $cache_key, $results, 'insane_mailer', 300 );
+		}
 
 		return [
 			'sent'       => isset( $results['sent'] ) ? (int) $results['sent']->count : 0,
@@ -226,7 +234,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 		$delivered = $summary['sent'];
 		$total     = $delivered + $summary['failed'] + $summary['bounced'];
 
-		if ( $total === 0 ) {
+		if ( 0 === $total ) {
 			return 0;
 		}
 
@@ -237,7 +245,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 		$bounced = $summary['bounced'];
 		$total   = $summary['sent'] + $bounced;
 
-		if ( $total === 0 ) {
+		if ( 0 === $total ) {
 			return 0;
 		}
 
@@ -248,7 +256,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 		$complained = $summary['complained'];
 		$sent       = $summary['sent'];
 
-		if ( $sent === 0 ) {
+		if ( 0 === $sent ) {
 			return 0;
 		}
 

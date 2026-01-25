@@ -25,11 +25,6 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 		$body     = $request->get_body();
 		$params   = $request->get_json_params();
 
-		IM_Logger::info( 'Webhook received', [
-			'provider' => $provider,
-			'body'     => $body,
-		] );
-
 		$method = "handle_{$provider}_webhook";
 
 		if ( method_exists( $this, $method ) ) {
@@ -147,6 +142,7 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 		$message_id = trim( $message_id, '<>' );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$updated = $wpdb->update(
 			$table_name,
 			[
@@ -159,10 +155,7 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 		);
 
 		if ( $updated ) {
-			IM_Logger::info( 'Email status updated via webhook', [
-				'message_id' => $message_id,
-				'status'     => $status,
-			] );
+			wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
 		}
 	}
 }

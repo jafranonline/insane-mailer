@@ -125,7 +125,7 @@ const providerDocs = {
       { label: 'Postmark Dashboard', url: 'https://account.postmarkapp.com/' },
     ],
   },
-  smtim: {
+  smtp: {
     title: 'Generic SMTP Setup',
     steps: [
       'Obtain SMTP credentials from your email provider',

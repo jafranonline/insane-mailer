@@ -141,6 +141,6 @@ class IM_YaySmtpMigrator extends IM_Abstract_Migrator {
 		$key = defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : 'yay_smtp123098';
 		$decrypted = openssl_decrypt( $encrypted, 'AES-128-ECB', $key );
 
-		return $decrypted ?: $encrypted;
+		return $decrypted ? $decrypted : $encrypted;
 	}
 }

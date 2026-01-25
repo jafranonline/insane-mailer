@@ -24,8 +24,10 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 	}
 
 	private function send_via_api( $mail_data, $region ) {
-		$access_key = $this->get_credential( 'ses_access_key' ) ?: $this->get_credential( 'access_key' );
-		$secret_key = $this->get_credential( 'ses_secret_key' ) ?: $this->get_credential( 'secret_key' );
+		$ses_access = $this->get_credential( 'ses_access_key' );
+		$ses_secret = $this->get_credential( 'ses_secret_key' );
+		$access_key = $ses_access ? $ses_access : $this->get_credential( 'access_key' );
+		$secret_key = $ses_secret ? $ses_secret : $this->get_credential( 'secret_key' );
 
 		if ( empty( $access_key ) || empty( $secret_key ) ) {
 			return [
@@ -83,12 +85,14 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 
 		try {
 			$phpmailer->isSMTP();
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$phpmailer->Host       = $host;
 			$phpmailer->SMTPAuth   = true;
 			$phpmailer->Username   = $username;
 			$phpmailer->Password   = $password;
 			$phpmailer->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
 			$phpmailer->Port       = $port;
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			$phpmailer->setFrom( $mail_data['from']['email'], $mail_data['from']['name'] ?? '' );
 			$phpmailer->addAddress( $mail_data['to']['email'], $mail_data['to']['name'] ?? '' );
@@ -97,6 +101,7 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 				$phpmailer->addReplyTo( $mail_data['reply_to'] );
 			}
 
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$phpmailer->Subject = $mail_data['subject'];
 
 			if ( ! empty( $mail_data['body_html'] ) ) {
@@ -105,6 +110,7 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 				$phpmailer->AltBody = $mail_data['body_plain'] ?? '';
 			} else {
 				$phpmailer->Body = $mail_data['body_plain'] ?? '';
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			}
 
 			if ( ! empty( $mail_data['attachments'] ) ) {
@@ -141,8 +147,10 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 	}
 
 	private function test_api_connection( $region ) {
-		$access_key = $this->get_credential( 'ses_access_key' ) ?: $this->get_credential( 'access_key' );
-		$secret_key = $this->get_credential( 'ses_secret_key' ) ?: $this->get_credential( 'secret_key' );
+		$ses_access = $this->get_credential( 'ses_access_key' );
+		$ses_secret = $this->get_credential( 'ses_secret_key' );
+		$access_key = $ses_access ? $ses_access : $this->get_credential( 'access_key' );
+		$secret_key = $ses_secret ? $ses_secret : $this->get_credential( 'secret_key' );
 
 		if ( empty( $access_key ) || empty( $secret_key ) ) {
 			return [
@@ -191,12 +199,14 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 
 		try {
 			$phpmailer->isSMTP();
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$phpmailer->Host       = $host;
 			$phpmailer->SMTPAuth   = true;
 			$phpmailer->Username   = $username;
 			$phpmailer->Password   = $password;
 			$phpmailer->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
 			$phpmailer->Port       = $port;
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			$phpmailer->smtpConnect();
 			$phpmailer->smtpClose();
@@ -250,7 +260,9 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
 			$error_message = $body;
+			// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- SimpleXML object property.
 			if ( $xml && isset( $xml->Error->Message ) ) {
+				// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- SimpleXML object property.
 				$error_message = (string) $xml->Error->Message;
 			}
 
@@ -288,7 +300,7 @@ class IM_Provider_SES extends IM_Abstract_Provider {
 		$payload_data          = $query;
 
 		// Canonical headers - only host and x-amz-date
-		$canonical_headers = "host:{$host}\n" . "x-amz-date:{$amz_datetime}\n";
+		$canonical_headers = "host:{$host}\nx-amz-date:{$amz_datetime}\n";
 		$signed_headers    = 'host;x-amz-date';
 		$payload_hash      = hash( $algo, $payload_data, false );
 

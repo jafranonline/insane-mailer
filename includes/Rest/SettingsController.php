@@ -85,6 +85,36 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 				'permission_callback' => [ $this, 'permission_check' ],
 			]
 		);
+
+		register_rest_route(
+			$this->namespace,
+			'/settings/export',
+			[
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => [ $this, 'export_settings' ],
+				'permission_callback' => [ $this, 'permission_check' ],
+			]
+		);
+
+		register_rest_route(
+			$this->namespace,
+			'/settings/import',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'import_settings' ],
+				'permission_callback' => [ $this, 'permission_check' ],
+			]
+		);
+
+		register_rest_route(
+			$this->namespace,
+			'/settings/reset',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'reset_settings' ],
+				'permission_callback' => [ $this, 'permission_check' ],
+			]
+		);
 	}
 
 	public function get_connection_status( $request ) {
@@ -108,7 +138,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			'from_email'         => get_option( 'admin_email' ),
 			'from_name'          => get_option( 'blogname' ),
 			'force_from'         => true,
-			'send_mode'          => 'queue',
+			'send_mode'          => 'direct',
 			'auto_plain_text'    => true,
 			'queue_runner'       => 'wp_cron',
 			'cron_token'         => '',
@@ -122,7 +152,6 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 
 		$settings = get_option( 'im_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
-
 
 		// Mask sensitive credentials
 		$sensitive_keys = [
@@ -287,9 +316,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 	public function send_test_email( $request ) {
 		$params = $request->get_json_params();
 
-		$to      = $params['to'] ?? '';
-		$subject = $params['subject'] ?? 'Test Email from Easy SMTP Queue';
-		$message = $params['message'] ?? 'This is a test email sent from Easy SMTP Queue plugin.';
+		$to = $params['to'] ?? '';
 
 		if ( empty( $to ) ) {
 			return $this->error_response( 'Recipient email is required' );
@@ -299,7 +326,122 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			return $this->error_response( 'Invalid email address' );
 		}
 
-		global $phpmailer;
+		$settings  = get_option( 'im_settings', [] );
+		$provider  = $settings['provider'] ?? 'default';
+		$site_name = get_bloginfo( 'name' );
+		$site_url  = home_url();
+		$timestamp = wp_date( 'F j, Y \a\t g:i A' );
+
+		$provider_names = [
+			'default'      => 'PHP Mail',
+			'smtp'         => 'Custom SMTP',
+			'ses'          => 'Amazon SES',
+			'sendgrid'     => 'SendGrid',
+			'mailgun'      => 'Mailgun',
+			'postmark'     => 'Postmark',
+			'brevo'        => 'Brevo',
+			'sparkpost'    => 'SparkPost',
+			'mailjet'      => 'Mailjet',
+			'elasticemail' => 'Elastic Email',
+			'smtpcom'      => 'SMTP.com',
+			'pepipost'     => 'Netcore',
+			'resend'       => 'Resend',
+			'mailersend'   => 'MailerSend',
+			'mailtrap'     => 'Mailtrap',
+			'loops'        => 'Loops',
+			'mandrill'     => 'Mandrill',
+			'smtp2go'      => 'SMTP2GO',
+			'socketlabs'   => 'SocketLabs',
+			'zeptomail'    => 'ZeptoMail',
+			'gmail'        => 'Gmail',
+			'outlook'      => 'Outlook',
+		];
+
+		$provider_name = $provider_names[ $provider ] ?? ucfirst( $provider );
+
+		$subject = 'Test Email from Insane Mailer';
+
+		$message = '<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;">
+	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5;">
+		<tr>
+			<td align="center" style="padding: 40px 20px;">
+				<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px;">
+					<!-- Main Card -->
+					<tr>
+						<td style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+							<!-- Header -->
+							<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+								<tr>
+									<td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #e4e4e7;">
+										<div style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; padding: 6px 12px; border-radius: 20px; text-transform: uppercase;">Insane Mailer</div>
+									</td>
+								</tr>
+							</table>
+							<!-- Content -->
+							<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+								<tr>
+									<td style="padding: 32px;">
+										<!-- Success Icon -->
+										<div style="text-align: center; margin-bottom: 24px;">
+											<div style="display: inline-block; width: 56px; height: 56px; background-color: #dcfce7; border-radius: 50%; line-height: 56px;">
+												<span style="color: #16a34a; font-size: 28px;">&#10003;</span>
+											</div>
+										</div>
+										<!-- Title -->
+										<h1 style="margin: 0 0 8px; font-size: 20px; font-weight: 600; color: #18181b; text-align: center;">Email Configured Successfully</h1>
+										<p style="margin: 0 0 28px; font-size: 14px; color: #71717a; text-align: center; line-height: 1.5;">Your email configuration is working correctly.</p>
+										<!-- Details -->
+										<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #fafafa; border-radius: 8px;">
+											<tr>
+												<td style="padding: 16px;">
+													<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+														<tr>
+															<td style="padding: 8px 0; border-bottom: 1px solid #e4e4e7;">
+																<span style="font-size: 12px; color: #71717a;">Provider</span><br>
+																<span style="font-size: 14px; color: #18181b; font-weight: 500;">' . esc_html( $provider_name ) . '</span>
+															</td>
+														</tr>
+														<tr>
+															<td style="padding: 8px 0; border-bottom: 1px solid #e4e4e7;">
+																<span style="font-size: 12px; color: #71717a;">Website</span><br>
+																<span style="font-size: 14px; color: #18181b; font-weight: 500;">' . esc_html( $site_name ) . '</span>
+															</td>
+														</tr>
+														<tr>
+															<td style="padding: 8px 0;">
+																<span style="font-size: 12px; color: #71717a;">Sent at</span><br>
+																<span style="font-size: 14px; color: #18181b; font-weight: 500;">' . esc_html( $timestamp ) . '</span>
+															</td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+										</table>
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<!-- Footer -->
+					<tr>
+						<td style="padding: 24px; text-align: center;">
+							<p style="margin: 0; font-size: 12px; color: #a1a1aa;">Sent from <a href="' . esc_url( $site_url ) . '" style="color: #71717a;">' . esc_html( $site_name ) . '</a></p>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>';
+
+		$headers = [ 'Content-Type: text/html; charset=UTF-8' ];
 
 		add_action(
 			'wp_mail_failed',
@@ -308,7 +450,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			}
 		);
 
-		$sent = wp_mail( $to, $subject, $message );
+		$sent = wp_mail( $to, $subject, $message, $headers );
 
 		if ( $sent ) {
 			return $this->success_response(
@@ -448,6 +590,100 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 		}
 
 		return class_exists( $class_name ) ? $class_name : null;
+	}
+
+	public function export_settings( $request ) {
+		$settings = get_option( 'im_settings', [] );
+
+		return $this->success_response( [
+			'settings' => $settings,
+			'exported' => gmdate( 'Y-m-d H:i:s' ),
+			'version'  => IM_VERSION,
+		] );
+	}
+
+	public function import_settings( $request ) {
+		$params = $request->get_json_params();
+
+		if ( empty( $params['settings'] ) || ! is_array( $params['settings'] ) ) {
+			return $this->error_response( 'Invalid settings data' );
+		}
+
+		$imported = $params['settings'];
+
+		$allowed_keys = [
+			'provider',
+			'credentials',
+			'from_email',
+			'from_name',
+			'force_from',
+			'send_mode',
+			'auto_plain_text',
+			'queue_runner',
+			'cron_token',
+			'cron_interval',
+			'bulk_limit',
+			'rate_limit',
+			'max_retries',
+			'retry_delay',
+			'priority_bypass',
+			'auto_delete_days',
+			'pause_sending',
+			'priority_express',
+		];
+
+		$sanitized = [];
+		foreach ( $allowed_keys as $key ) {
+			if ( isset( $imported[ $key ] ) ) {
+				$sanitized[ $key ] = $imported[ $key ];
+			}
+		}
+
+		if ( empty( $sanitized ) ) {
+			return $this->error_response( 'No valid settings found in import data' );
+		}
+
+		$current = get_option( 'im_settings', [] );
+		$merged  = array_merge( $current, $sanitized );
+
+		update_option( 'im_settings', $merged );
+		delete_transient( 'im_connection_status' );
+
+		return $this->success_response( [
+			'message'  => 'Settings imported successfully',
+			'settings' => $merged,
+		] );
+	}
+
+	public function reset_settings( $request ) {
+		$defaults = [
+			'provider'           => 'smtp',
+			'credentials'        => [],
+			'from_email'         => get_option( 'admin_email' ),
+			'from_name'          => get_option( 'blogname' ),
+			'force_from'         => true,
+			'send_mode'          => 'direct',
+			'auto_plain_text'    => true,
+			'queue_runner'       => 'wp_cron',
+			'cron_token'         => '',
+			'cron_interval'      => 'every_minute',
+			'bulk_limit'         => 50,
+			'rate_limit'         => 14,
+			'max_retries'        => 3,
+			'retry_delay'        => 300,
+			'priority_bypass'    => [],
+			'auto_delete_days'   => 14,
+			'pause_sending'      => false,
+			'priority_express'   => false,
+		];
+
+		update_option( 'im_settings', $defaults );
+		delete_transient( 'im_connection_status' );
+
+		return $this->success_response( [
+			'message'  => 'Settings reset to defaults',
+			'settings' => $defaults,
+		] );
 	}
 
 	public function check_constants( $request ) {

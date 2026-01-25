@@ -62,7 +62,8 @@ class IM_WpSmtpMigrator extends IM_Abstract_Migrator {
 			}
 		}
 
-		return reset( $source ) ?: [];
+		$first = reset( $source );
+		return $first ? $first : [];
 	}
 
 	private function map_credentials( array $connection, string $provider ): array {

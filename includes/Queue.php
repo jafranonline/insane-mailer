@@ -23,12 +23,10 @@ class IM_Queue {
 
 	public function process() {
 		if ( $this->is_processing ) {
-			IM_Logger::debug( 'Queue already processing' );
 			return;
 		}
 
 		if ( ! $this->acquire_lock() ) {
-			IM_Logger::debug( 'Could not acquire queue lock' );
 			return;
 		}
 
@@ -36,8 +34,6 @@ class IM_Queue {
 
 		$bulk_limit = apply_filters( 'im_bulk_limit', $this->settings['bulk_limit'] ?? 50 );
 		$emails     = $this->get_pending_emails( $bulk_limit );
-
-		IM_Logger::debug( 'Processing queue', [ 'count' => count( $emails ) ] );
 
 		foreach ( $emails as $email ) {
 			$this->process_email( $email );
@@ -70,18 +66,20 @@ class IM_Queue {
 		$table_name = $wpdb->prefix . 'im_emails';
 		$now        = current_time( 'mysql' );
 
-		$sql = $wpdb->prepare(
-			"SELECT * FROM $table_name
-			WHERE status = 'pending'
-			AND scheduled_at <= %s
-			AND attempts < max_attempts
-			ORDER BY priority ASC, created_at ASC
-			LIMIT %d",
-			$now,
-			$limit
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, queue processing needs fresh data.
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM %i
+				WHERE status = 'pending'
+				AND scheduled_at <= %s
+				AND attempts < max_attempts
+				ORDER BY priority ASC, created_at ASC
+				LIMIT %d",
+				$table_name,
+				$now,
+				$limit
+			)
 		);
-
-		return $wpdb->get_results( $sql );
 	}
 
 	private function process_email( $email ) {
@@ -102,8 +100,6 @@ class IM_Queue {
 
 	private function send_email( $email ) {
 		if ( ! empty( $this->settings['pause_sending'] ) ) {
-			IM_Logger::info( 'Email sending paused (debug mode)', [ 'email_id' => $email->id ] );
-
 			return [
 				'success'    => true,
 				'message_id' => 'debug-' . uniqid(),
@@ -131,8 +127,14 @@ class IM_Queue {
 			$provider = new $provider_class( $this->settings['credentials'] ?? [] );
 
 			$mail_data = [
-				'to'          => [ 'email' => $email->to_email, 'name' => $email->to_name ],
-				'from'        => [ 'email' => $email->from_email, 'name' => $email->from_name ],
+				'to'          => [
+					'email' => $email->to_email,
+					'name' => $email->to_name,
+				],
+				'from'        => [
+					'email' => $email->from_email,
+					'name' => $email->from_name,
+				],
 				'reply_to'    => $email->reply_to,
 				'subject'     => $email->subject,
 				'body_html'   => $email->body_html,
@@ -145,11 +147,6 @@ class IM_Queue {
 
 			return $result;
 		} catch ( Exception $e ) {
-			IM_Logger::error( 'Send failed', [
-				'email_id' => $email->id,
-				'error'    => $e->getMessage(),
-			] );
-
 			return [
 				'success' => false,
 				'error'   => $e->getMessage(),
@@ -189,15 +186,18 @@ class IM_Queue {
 			}
 		}
 
-		$body        = ! empty( $email->body_html ) ? $email->body_html : $email->body_plain;
-		$attachments = json_decode( $email->attachments, true ) ?: [];
+		$body            = ! empty( $email->body_html ) ? $email->body_html : $email->body_plain;
+		$attachment_data = json_decode( $email->attachments, true );
+		$attachments     = $attachment_data ? $attachment_data : [];
 
-		// Temporarily remove our own hook to prevent infinite loop
+		// Temporarily remove our hooks to prevent infinite loop
+		remove_filter( 'pre_wp_mail', [ IM_Mailer::instance(), 'maybe_queue_mail' ], 10 );
 		remove_action( 'phpmailer_init', [ IM_Mailer::instance(), 'intercept_phpmailer' ], 999 );
 
 		$sent = wp_mail( $to, $email->subject, $body, $headers, $attachments );
 
-		// Re-add our hook
+		// Re-add our hooks
+		add_filter( 'pre_wp_mail', [ IM_Mailer::instance(), 'maybe_queue_mail' ], 10, 2 );
 		add_action( 'phpmailer_init', [ IM_Mailer::instance(), 'intercept_phpmailer' ], 999 );
 
 		if ( $sent ) {
@@ -210,6 +210,7 @@ class IM_Queue {
 		global $phpmailer;
 		$error = 'Unknown error';
 		if ( isset( $phpmailer ) && $phpmailer instanceof PHPMailer\PHPMailer\PHPMailer ) {
+			// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer property.
 			$error = $phpmailer->ErrorInfo;
 		}
 
@@ -231,6 +232,17 @@ class IM_Queue {
 			'elasticemail' => 'IM_Provider_ElasticEmail',
 			'smtpcom'      => 'IM_Provider_SmtpCom',
 			'smtp'         => 'IM_Provider_SMTP',
+			'gmail'        => 'IM_Provider_Gmail',
+			'outlook'      => 'IM_Provider_Outlook',
+			'socketlabs'   => 'IM_Provider_SocketLabs',
+			'mandrill'     => 'IM_Provider_Mandrill',
+			'smtp2go'      => 'IM_Provider_Smtp2go',
+			'mailtrap'     => 'IM_Provider_Mailtrap',
+			'mailjet'      => 'IM_Provider_Mailjet',
+			'zeptomail'    => 'IM_Provider_ZeptoMail',
+			'mailersend'   => 'IM_Provider_MailerSend',
+			'loops'        => 'IM_Provider_Loops',
+			'resend'       => 'IM_Provider_Resend',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -251,6 +263,7 @@ class IM_Queue {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
 			$table_name,
 			[
@@ -261,12 +274,15 @@ class IM_Queue {
 			[ '%s', '%s' ],
 			[ '%d' ]
 		);
+
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
 	}
 
 	private function mark_sent( $email_id, $result ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
 			$table_name,
 			[
@@ -281,9 +297,9 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		do_action( 'im_email_sent', $email_id, $result );
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
 
-		IM_Logger::info( 'Email sent', [ 'email_id' => $email_id ] );
+		do_action( 'im_email_sent', $email_id, $result );
 	}
 
 	private function mark_failed( $email, $result ) {
@@ -293,11 +309,12 @@ class IM_Queue {
 		$attempts = $email->attempts + 1;
 		$status   = $attempts >= $email->max_attempts ? 'failed' : 'pending';
 
-		$retry_delay = $this->settings['retry_delay'] ?? 300;
-		$scheduled_at = $status === 'pending'
+		$retry_delay  = $this->settings['retry_delay'] ?? 300;
+		$scheduled_at = 'pending' === $status
 			? gmdate( 'Y-m-d H:i:s', time() + $retry_delay )
 			: $email->scheduled_at;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
 			$table_name,
 			[
@@ -313,16 +330,11 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		if ( $status === 'failed' ) {
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+
+		if ( 'failed' === $status ) {
 			do_action( 'im_email_failed', $email->id, $result['error'] ?? 'Unknown error' );
 		}
-
-		IM_Logger::warning( 'Email send attempt failed', [
-			'email_id' => $email->id,
-			'attempts' => $attempts,
-			'status'   => $status,
-			'error'    => $result['error'] ?? 'Unknown error',
-		] );
 	}
 
 	private function apply_rate_limit() {
@@ -338,12 +350,14 @@ class IM_Queue {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'im_emails';
 
-		$email = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $email_id ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single row lookup.
+		$email = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id ) );
 
 		if ( ! $email ) {
 			return false;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
 			$table_name,
 			[
@@ -357,27 +371,35 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
+		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+
 		return true;
 	}
 
 	public function get_stats() {
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$cache_key = 'im_queue_stats';
+		$stats_result = wp_cache_get( $cache_key, 'insane_mailer' );
 
-		$stats = $wpdb->get_results(
-			"SELECT status, COUNT(*) as count
-			FROM $table_name
-			GROUP BY status",
-			OBJECT_K
-		);
+		if ( false === $stats_result ) {
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'im_emails';
 
-		$pending    = isset( $stats['pending'] ) ? (int) $stats['pending']->count : 0;
-		$processing = isset( $stats['processing'] ) ? (int) $stats['processing']->count : 0;
-		$sent       = isset( $stats['sent'] ) ? (int) $stats['sent']->count : 0;
-		$failed     = isset( $stats['failed'] ) ? (int) $stats['failed']->count : 0;
-		$paused     = isset( $stats['paused'] ) ? (int) $stats['paused']->count : 0;
-		$bounced    = isset( $stats['bounced'] ) ? (int) $stats['bounced']->count : 0;
-		$complained = isset( $stats['complained'] ) ? (int) $stats['complained']->count : 0;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$stats_result = $wpdb->get_results(
+				$wpdb->prepare( 'SELECT status, COUNT(*) as count FROM %i GROUP BY status', $table_name ),
+				OBJECT_K
+			);
+
+			wp_cache_set( $cache_key, $stats_result, 'insane_mailer', 60 );
+		}
+
+		$pending    = isset( $stats_result['pending'] ) ? (int) $stats_result['pending']->count : 0;
+		$processing = isset( $stats_result['processing'] ) ? (int) $stats_result['processing']->count : 0;
+		$sent       = isset( $stats_result['sent'] ) ? (int) $stats_result['sent']->count : 0;
+		$failed     = isset( $stats_result['failed'] ) ? (int) $stats_result['failed']->count : 0;
+		$paused     = isset( $stats_result['paused'] ) ? (int) $stats_result['paused']->count : 0;
+		$bounced    = isset( $stats_result['bounced'] ) ? (int) $stats_result['bounced']->count : 0;
+		$complained = isset( $stats_result['complained'] ) ? (int) $stats_result['complained']->count : 0;
 
 		return [
 			'pending'    => $pending,

@@ -10,10 +10,6 @@ export default function Overview(props) {
   const [stats, setStats] = createSignal(null);
   const [loading, setLoading] = createSignal(true);
   const [serverInfo, setServerInfo] = createSignal(null);
-  const [migrations, setMigrations] = createSignal([]);
-  const [migrationDismissed, setMigrationDismissed] = createSignal(
-    localStorage.getItem('im_migration_dismissed') === 'true'
-  );
   const [analytics, setAnalytics] = createSignal(null);
   const [analyticsLoading, setAnalyticsLoading] = createSignal(true);
   const [analyticsPeriod, setAnalyticsPeriod] = createSignal(30);
@@ -40,14 +36,12 @@ export default function Overview(props) {
 
   onMount(async () => {
     try {
-      const [statsRes, serverRes, migrationRes] = await Promise.all([
+      const [statsRes, serverRes] = await Promise.all([
         api.getStats(),
         api.getServerInfo(),
-        api.detectMigrations(),
       ]);
       setStats(statsRes.data.stats);
       setServerInfo(serverRes.data);
-      setMigrations(migrationRes.data?.plugins || []);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -56,15 +50,10 @@ export default function Overview(props) {
     loadAnalytics(analyticsPeriod());
   });
 
-  const dismissMigrationBanner = () => {
-    localStorage.setItem('im_migration_dismissed', 'true');
-    setMigrationDismissed(true);
-  };
-
   const getProviderName = () => {
     const providers = {
       default: 'Default (PHP Mail)',
-      smtim: 'SMTP',
+      smtp: 'SMTP',
       ses: 'Amazon SES',
       mailgun: 'Mailgun',
       sendgrid: 'SendGrid',
@@ -85,47 +74,6 @@ export default function Overview(props) {
 
   return (
     <div class="im:space-y-6">
-      {/* Migration Banner */}
-      <Show when={!migrationDismissed() && migrations().length > 0}>
-        <div class="im:bg-gradient-to-r im:from-indigo-50 im:to-purple-50 im:rounded-lg im:border im:border-indigo-200 im:p-4 im:flex im:items-center im:justify-between">
-          <div class="im:flex im:items-center im:gap-4">
-            <div class="im:w-10 im:h-10 im:rounded-full im:bg-indigo-100 im:flex im:items-center im:justify-center im:shrink-0">
-              <svg class="im:w-5 im:h-5 im:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="im:text-sm im:font-semibold im:text-gray-900">
-                Import settings from {migrations()[0]?.name}
-                {migrations().length > 1 && ` and ${migrations().length - 1} more`}
-              </h3>
-              <p class="im:text-sm im:text-gray-600">
-                We detected existing SMTP plugin configurations that can be imported.
-              </p>
-            </div>
-          </div>
-          <div class="im:flex im:items-center im:gap-2">
-            <button
-              type="button"
-              class="im:px-4 im:py-2 im:bg-indigo-600 im:text-white im:text-sm im:font-medium im:rounded-md hover:im:bg-indigo-700 im:transition-colors"
-              onClick={() => props.onSwitchTab('provider')}
-            >
-              Import Settings
-            </button>
-            <button
-              type="button"
-              class="im:p-2 im:text-gray-400 hover:im:text-gray-600 im:rounded-md hover:im:bg-white/50 im:transition-colors"
-              onClick={dismissMigrationBanner}
-              title="Dismiss"
-            >
-              <svg class="im:w-5 im:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </Show>
-
       {/* Stats Cards */}
       <div class="im:grid im:grid-cols-4 im:gap-4">
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">
@@ -267,9 +215,9 @@ export default function Overview(props) {
       </div>
 
       {/* Analytics Section */}
-      <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">
-        <div class="im:flex im:items-center im:justify-between im:mb-6">
-          <h3 class="im:text-sm im:font-semibold im:text-gray-900">Email Analytics</h3>
+      <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5 im:overflow-hidden">
+        <div class="im:flex im:justify-between im:mb-6 ">
+          <h3 class="im:text-sm im:font-semibold im:text-gray-900 im:p-0">Email Analytics</h3>
           <DateRangeSelect value={analyticsPeriod()} onChange={handlePeriodChange} />
         </div>
 

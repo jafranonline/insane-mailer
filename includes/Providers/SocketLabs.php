@@ -129,7 +129,7 @@ class IM_Provider_SocketLabs extends IM_Abstract_Provider {
 		);
 
 		// Even with empty messages, valid credentials will return a specific response
-		if ( isset( $result['response']['errorCode'] ) && $result['response']['errorCode'] === 'NoMessages' ) {
+		if ( isset( $result['response']['errorCode'] ) && 'NoMessages' === $result['response']['errorCode'] ) {
 			return [
 				'success' => true,
 				'message' => 'SocketLabs connection successful',

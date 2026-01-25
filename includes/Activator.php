@@ -21,6 +21,7 @@ class IM_Activator {
 
 		$table_name = $wpdb->prefix . 'im_emails';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, not cacheable.
 		$column_exists = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'send_mode'",
@@ -30,7 +31,25 @@ class IM_Activator {
 		);
 
 		if ( ! $column_exists ) {
-			$wpdb->query( "ALTER TABLE $table_name ADD COLUMN send_mode ENUM('queue', 'direct') NOT NULL DEFAULT 'queue' AFTER status" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema migration.
+			$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i ADD COLUMN send_mode VARCHAR(10) NOT NULL DEFAULT %s AFTER status', $table_name, 'queue' ) );
+		}
+
+		// Convert ENUM to VARCHAR if needed.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, not cacheable.
+		$status_type = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'status'",
+				DB_NAME,
+				$table_name
+			)
+		);
+
+		if ( 'enum' === strtolower( $status_type ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema migration.
+			$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT %s', $table_name, 'pending' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema migration.
+			$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i MODIFY COLUMN send_mode VARCHAR(10) NOT NULL DEFAULT %s', $table_name, 'queue' ) );
 		}
 	}
 
@@ -42,8 +61,8 @@ class IM_Activator {
 
 		$sql = "CREATE TABLE IF NOT EXISTS $table_name (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			status ENUM('pending', 'processing', 'sent', 'failed', 'bounced', 'complained', 'paused') NOT NULL DEFAULT 'pending',
-			send_mode ENUM('queue', 'direct') NOT NULL DEFAULT 'queue',
+			status VARCHAR(20) NOT NULL DEFAULT 'pending',
+			send_mode VARCHAR(10) NOT NULL DEFAULT 'queue',
 			priority INT NOT NULL DEFAULT 2,
 			to_email VARCHAR(255) NOT NULL,
 			to_name VARCHAR(255) DEFAULT NULL,
@@ -87,7 +106,7 @@ class IM_Activator {
 			'from_email'         => get_option( 'admin_email' ),
 			'from_name'          => get_option( 'blogname' ),
 			'force_from'         => true,
-			'send_mode'          => 'queue',
+			'send_mode'          => 'direct',
 			'auto_plain_text'    => true,
 			'queue_runner'       => 'wp_cron',
 			'external_token'     => wp_generate_password( 32, false ),
@@ -111,19 +130,25 @@ class IM_Activator {
 
 	private static function create_upload_directory() {
 		$upload_dir = wp_upload_dir();
-		$im_dir  = $upload_dir['basedir'] . '/im-attachments';
+		$im_dir     = $upload_dir['basedir'] . '/im-attachments';
 
 		if ( ! file_exists( $im_dir ) ) {
 			wp_mkdir_p( $im_dir );
 
+			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+			}
+
 			$htaccess_file = $im_dir . '/.htaccess';
 			if ( ! file_exists( $htaccess_file ) ) {
-				file_put_contents( $htaccess_file, 'Deny from all' );
+				$wp_filesystem->put_contents( $htaccess_file, 'Deny from all', FS_CHMOD_FILE );
 			}
 
 			$index_file = $im_dir . '/index.php';
 			if ( ! file_exists( $index_file ) ) {
-				file_put_contents( $index_file, '<?php // Silence is golden' );
+				$wp_filesystem->put_contents( $index_file, '<?php // Silence is golden', FS_CHMOD_FILE );
 			}
 		}
 	}

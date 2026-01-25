@@ -110,7 +110,7 @@ const ProviderIcon = ({ id }) => {
         <path d="M7 9h4l-3 6h4M15 9v6M15 9h2a2 2 0 110 4h-2" stroke="#231F20" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
     ),
-    smtim: (
+    smtp: (
       <svg viewBox="0 0 24 24" fill="none" class={iconClass}>
         <rect x="2" y="4" width="20" height="16" rx="2" stroke="#6366f1" stroke-width="2"/>
         <path d="M2 7l10 5 10-5" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -341,7 +341,7 @@ export default function Settings() {
     zeptomail: [{ key: 'zeptomail_api_key', label: 'Send Mail Token' }],
     gmail: [{ key: 'gmail_client_id', label: 'Client ID' }, { key: 'gmail_client_secret', label: 'Client Secret' }],
     outlook: [{ key: 'outlook_client_id', label: 'Client ID' }, { key: 'outlook_client_secret', label: 'Client Secret' }],
-    smtim: [{ key: 'smtp_username', label: 'Username' }, { key: 'smtp_password', label: 'Password' }],
+    smtp: [{ key: 'smtp_username', label: 'Username' }, { key: 'smtp_password', label: 'Password' }],
   };
 
   const currentProviderFields = () => providerFields[settings()?.provider] || [];
@@ -383,7 +383,7 @@ export default function Settings() {
           <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
             <div class="im:flex im:items-start im:justify-between im:mb-6">
               <div>
-                <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">Email Provider</h3>
+                <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-0 im:pb-0">Email Provider</h3>
                 <p class="im:text-sm im:text-gray-500">Select your email delivery service</p>
               </div>
               <div class="im:relative">
@@ -408,12 +408,12 @@ export default function Settings() {
                       type="button"
                       onClick={() => !provider.upcoming && updateSetting('provider', provider.id)}
                       disabled={provider.upcoming}
-                      class={`im-provider-card im:relative im:flex im:items-center im:justify-center im:w-[120px] im:h-[100px] im:rounded-lg im:border-2 ${
+                      class={`im-provider-card im:relative im:flex im:items-center im:justify-center im:w-[120px] im:h-[100px] im:rounded-lg im:border-2 im:transition-colors im:duration-75 ${
                         provider.upcoming
                           ? 'im:border-gray-200 im:bg-gray-50 im:opacity-50 im:cursor-not-allowed'
                           : settings().provider === provider.id
                             ? 'im:border-gray-900 im:bg-gray-50'
-                            : 'im:border-gray-200 im:bg-white'
+                            : 'im:border-gray-200 im:bg-white hover:im:border-gray-300 hover:im:bg-gray-50'
                       }`}
                     >
                       {provider.upcoming && (
@@ -933,8 +933,8 @@ export default function Settings() {
           <div class="im:w-80 im:space-y-6 im:shrink-0">
             {/* Connection Status */}
             <Show when={settings().provider !== 'default'}>
-              <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:px-5 im:pb-5">
-                <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4">Connection Status</h4>
+              <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
+                <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4 im:mt-0">Connection Status</h4>
                 <Show when={connectionLoading()}>
                   <div class="im:flex im:items-center im:gap-3 im:text-gray-500">
                     <div class="im:w-2.5 im:h-2.5 im:rounded-full im:bg-gray-300 im:animate-pulse" />
@@ -963,11 +963,11 @@ export default function Settings() {
             </Show>
 
             {/* Sender Details */}
-            <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:px-5 im:pb-5 im:relative">
+            <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6 im:relative">
               <Show when={!editingSender()}>
                 <button
                   type="button"
-                  class="im:absolute im:top-3 im:right-3 im:p-1.5 im:text-gray-400 hover:im:text-gray-600 hover:im:bg-gray-100 im:rounded im:transition-colors"
+                  class="im:absolute im:top-5 im:right-5 im:p-1.5 im:text-gray-400 hover:im:text-gray-600 hover:im:bg-gray-100 im:rounded im:transition-colors"
                   onClick={() => setEditingSender(true)}
                   title="Edit"
                 >
@@ -976,7 +976,7 @@ export default function Settings() {
                   </svg>
                 </button>
               </Show>
-              <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4">Sender Details</h4>
+              <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4 im:mt-0">Sender Details</h4>
               <div class="im:space-y-3">
                 <Show when={!editingSender()}>
                   <div>
@@ -1031,14 +1031,14 @@ export default function Settings() {
                       placeholder="replies@example.com"
                     />
                   </div>
-                  <label class="im:flex im:items-center im:gap-2 im:cursor-pointer">
+                  <label class="im:inline-flex im:items-center im:gap-2 im:cursor-pointer">
                     <input
                       type="checkbox"
-                      class="im:w-3.5 im:h-3.5 im:rounded im:border-gray-300 im:text-gray-900 im:cursor-pointer"
+                      class="im:w-4 im:h-4 im:shrink-0 im:rounded im:border-gray-300 im:text-gray-900 im:cursor-pointer"
                       checked={settings().force_from}
                       onChange={(e) => updateSetting('force_from', e.target.checked)}
                     />
-                    <span class="im:text-xs im:text-gray-600">Force from address</span>
+                    <span class="im:text-sm im:text-gray-600 im:leading-none">Force from address</span>
                   </label>
                   <div class="im:flex im:items-center im:gap-2 im:pt-2">
                     <button
@@ -1062,17 +1062,14 @@ export default function Settings() {
             </div>
 
             {/* Send Test Email */}
-            <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:px-5 im:pb-5">
-              <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:py-4">Send Test Email</h4>
+            <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
+              <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4 im:mt-0">Send Test Email</h4>
               <Show when={testSuccess()}>
-                <div class="im:mb-4 im:bg-green-50 im:border im:border-green-200 im:rounded-md im:p-3 im:flex im:items-start im:gap-2">
-                  <svg class="im:w-4 im:h-4 im:text-green-600 im:mt-0.5 im:shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="im:mb-3 im:bg-green-50 im:border im:border-green-200 im:rounded-md im:px-3 im:py-2 im:flex im:items-center im:gap-2">
+                  <svg class="im:w-4 im:h-4 im:text-green-600 im:shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <div>
-                    <p class="im:text-sm im:font-medium im:text-green-800">Email sent!</p>
-                    <p class="im:text-xs im:text-green-600">Check your inbox.</p>
-                  </div>
+                  <span class="im:text-sm im:font-medium im:text-green-800">Email sent! Check your inbox.</span>
                   <button
                     type="button"
                     class="im:ml-auto im:text-green-600 hover:im:text-green-800"
@@ -1085,8 +1082,8 @@ export default function Settings() {
                 </div>
               </Show>
               <form onSubmit={handleSendTestEmail}>
-                <div class="im:mb-3">
-                  <label class="im:block im:text-xs im:text-gray-500 im:mb-1.5">Recipient</label>
+                <div class="im:mb-2">
+                  <label class="im:block im:text-xs im:text-gray-500 im:mb-1">Recipient</label>
                   <input
                     type="email"
                     class="im:w-full im:px-3 im:py-2 im:border im:border-gray-300 im:rounded-md im:text-sm focus:im:outline-none focus:im:ring-2 focus:im:ring-gray-900 focus:im:border-transparent"
@@ -1098,8 +1095,8 @@ export default function Settings() {
                 </div>
                 <button
                   type="submit"
-                  class="im:w-full im:px-3 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:outline-none disabled:im:opacity-50 disabled:im:cursor-not-allowed im:transition-colors"
-                  disabled={sendingTest()}
+                  class="im:w-full im:px-3 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:outline-none disabled:im:opacity-30 disabled:im:cursor-not-allowed im:transition-colors"
+                  disabled={sendingTest() || !testEmailTo() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmailTo()) || (settings().provider !== 'default' && connectionStatus() !== 'success')}
                 >
                   {sendingTest() ? 'Sending...' : 'Send Test'}
                 </button>

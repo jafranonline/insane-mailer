@@ -36,6 +36,11 @@ export default function Advanced(props) {
   const [settings, setSettings] = createSignal(globalSettings() || null);
   const [saving, setSaving] = createSignal(false);
   const [regenerating, setRegenerating] = createSignal(false);
+  const [exporting, setExporting] = createSignal(false);
+  const [importing, setImporting] = createSignal(false);
+  const [resetting, setResetting] = createSignal(false);
+  const [showResetConfirm, setShowResetConfirm] = createSignal(false);
+  let fileInputRef;
 
   const activeTab = () => props.subTab || 'general';
   const setActiveTab = (tab) => props.onSubTabChange?.(tab);
@@ -81,6 +86,63 @@ export default function Advanced(props) {
     toast.success('Endpoint copied to clipboard');
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await api.exportSettings();
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `insane-mailer-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Settings exported');
+    } catch (error) {
+      toast.error('Failed to export: ' + error.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const settingsData = data.settings || data;
+      const response = await api.importSettings(settingsData);
+      setSettings(response.data.settings);
+      updateGlobalSettings(response.data.settings);
+      toast.success('Settings imported');
+    } catch (error) {
+      toast.error('Failed to import: ' + error.message);
+    } finally {
+      setImporting(false);
+      if (fileInputRef) fileInputRef.value = '';
+    }
+  };
+
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      const response = await api.resetSettings();
+      setSettings(response.data.settings);
+      updateGlobalSettings(response.data.settings);
+      setShowResetConfirm(false);
+      toast.success('Settings reset to defaults');
+    } catch (error) {
+      toast.error('Failed to reset: ' + error.message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div>
       {settings() && (
@@ -112,6 +174,13 @@ export default function Advanced(props) {
                     Queue Settings
                   </button>
                 </Show>
+                <button
+                  type="button"
+                  class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'tools' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
+                  onClick={() => setActiveTab('tools')}
+                >
+                  Tools
+                </button>
               </nav>
             </div>
 
@@ -381,18 +450,105 @@ export default function Advanced(props) {
                   </div>
                 </div>
               </Show>
+
+              {/* Tools Tab */}
+              <Show when={activeTab() === 'tools'}>
+                <div class="im:space-y-6">
+                  <div>
+                    <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">Settings Tools</h3>
+                    <p class="im:text-sm im:text-gray-500 im:mb-4">Export, import, or reset your settings</p>
+                  </div>
+
+                  {/* Export */}
+                  <div class="im:flex im:items-start im:gap-4 im:pt-4 im:px-4 im:pb-0 im:bg-gray-50 im:rounded-lg">
+                    <div class="im:flex-1">
+                      <h4 class="im:text-sm im:font-medium im:text-gray-900 im:mt-0 im:mb-1 im:pt-0 im:pb-0">Export Settings</h4>
+                      <p class="im:text-sm im:text-gray-500 im:mt-1">Download your current settings as a JSON file for backup or migration.</p>
+                    </div>
+                    <button
+                      type="button"
+                      class="im:px-4 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:transition-colors disabled:im:opacity-50"
+                      onClick={handleExport}
+                      disabled={exporting()}
+                    >
+                      {exporting() ? 'Exporting...' : 'Export'}
+                    </button>
+                  </div>
+
+                  {/* Import */}
+                  <div class="im:flex im:items-start im:gap-4 im:pt-4 im:px-4 im:pb-0 im:bg-gray-50 im:rounded-lg">
+                    <div class="im:flex-1">
+                      <h4 class="im:text-sm im:font-medium im:text-gray-900 im:mt-0 im:mb-1 im:pt-0 im:pb-0">Import Settings</h4>
+                      <p class="im:text-sm im:text-gray-500 im:mt-1">Restore settings from a previously exported JSON file.</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".json"
+                      class="im:hidden"
+                      ref={fileInputRef}
+                      onChange={handleImport}
+                    />
+                    <button
+                      type="button"
+                      class="im:px-4 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:transition-colors disabled:im:opacity-50"
+                      onClick={() => fileInputRef?.click()}
+                      disabled={importing()}
+                    >
+                      {importing() ? 'Importing...' : 'Import'}
+                    </button>
+                  </div>
+
+                  {/* Reset */}
+                  <div class="im:flex im:items-start im:gap-4 im:pt-4 im:px-4 im:pb-0 im:bg-red-50 im:rounded-lg im:border im:border-red-200">
+                    <div class="im:flex-1">
+                      <h4 class="im:text-sm im:font-medium im:text-red-900 im:mt-0 im:mb-1 im:pt-0 im:pb-0">Reset Settings</h4>
+                      <p class="im:text-sm im:text-red-700 im:mt-1">Reset all settings to their default values. This cannot be undone.</p>
+                    </div>
+                    <Show when={!showResetConfirm()}>
+                      <button
+                        type="button"
+                        class="im:px-4 im:py-2 im:bg-red-600 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-red-700 im:transition-colors"
+                        onClick={() => setShowResetConfirm(true)}
+                      >
+                        Reset
+                      </button>
+                    </Show>
+                    <Show when={showResetConfirm()}>
+                      <div class="im:flex im:gap-2">
+                        <button
+                          type="button"
+                          class="im:px-4 im:py-2 im:bg-gray-200 im:text-gray-700 im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-300 im:transition-colors"
+                          onClick={() => setShowResetConfirm(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          class="im:px-4 im:py-2 im:bg-red-600 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-red-700 im:transition-colors disabled:im:opacity-50"
+                          onClick={handleReset}
+                          disabled={resetting()}
+                        >
+                          {resetting() ? 'Resetting...' : 'Confirm Reset'}
+                        </button>
+                      </div>
+                    </Show>
+                  </div>
+                </div>
+              </Show>
             </div>
           </div>
 
-          <div class="im:flex im:items-center im:gap-3 im:mt-6">
-            <button
-              type="submit"
-              class="im:px-4 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:outline-none disabled:im:opacity-50 disabled:im:cursor-not-allowed im:transition-colors"
-              disabled={saving()}
-            >
-              {saving() ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
+          <Show when={activeTab() !== 'tools'}>
+            <div class="im:flex im:items-center im:gap-3 im:mt-6">
+              <button
+                type="submit"
+                class="im:px-4 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:outline-none disabled:im:opacity-50 disabled:im:cursor-not-allowed im:transition-colors"
+                disabled={saving()}
+              >
+                {saving() ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </Show>
         </form>
       )}
     </div>

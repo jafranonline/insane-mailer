@@ -21,12 +21,14 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 
 		try {
 			$mail->isSMTP();
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$mail->Host       = $this->get_credential( 'host', 'localhost' );
 			$mail->Port       = $this->get_credential( 'port', 587 );
 			$mail->SMTPAuth   = $this->get_credential( 'auth', false );
 			$mail->Username   = $this->get_credential( 'username', '' );
 			$mail->Password   = $this->get_credential( 'password', '' );
 			$mail->SMTPSecure = $this->get_credential( 'encryption', 'tls' );
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			$mail->setFrom( $mail_data['from']['email'], $mail_data['from']['name'] ?? '' );
 			$mail->addAddress( $mail_data['to']['email'], $mail_data['to']['name'] ?? '' );
@@ -35,9 +37,11 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 				$mail->addReplyTo( $mail_data['reply_to'] );
 			}
 
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$mail->Subject = $mail_data['subject'];
 			$mail->Body    = $mail_data['body_html'];
 			$mail->AltBody = $mail_data['body_plain'] ?? '';
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			if ( ! empty( $mail_data['body_html'] ) ) {
 				$mail->isHTML( true );
@@ -60,6 +64,7 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 		} catch ( Exception $e ) {
 			return [
 				'success' => false,
+				// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer property.
 				'error'   => $mail->ErrorInfo,
 			];
 		}
@@ -74,6 +79,7 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 
 		try {
 			$mail->isSMTP();
+			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$mail->Host       = $this->get_credential( 'host', 'localhost' );
 			$mail->Port       = $this->get_credential( 'port', 587 );
 			$mail->SMTPAuth   = $this->get_credential( 'auth', false );
@@ -81,6 +87,7 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 			$mail->Password   = $this->get_credential( 'password', '' );
 			$mail->SMTPSecure = $this->get_credential( 'encryption', 'tls' );
 			$mail->Timeout    = 10;
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			$mail->smtpConnect();
 			$mail->smtpClose();
@@ -92,6 +99,7 @@ class IM_Provider_SMTP extends IM_Abstract_Provider {
 		} catch ( Exception $e ) {
 			return [
 				'success' => false,
+				// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer property.
 				'error'   => $mail->ErrorInfo,
 			];
 		}

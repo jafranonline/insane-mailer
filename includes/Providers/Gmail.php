@@ -45,7 +45,7 @@ class IM_Provider_Gmail extends IM_Abstract_Provider {
 
 		if ( ! $result['success'] ) {
 			// Check if token expired
-			if ( isset( $result['status_code'] ) && $result['status_code'] === 401 ) {
+			if ( isset( $result['status_code'] ) && 401 === $result['status_code'] ) {
 				$refresh_result = $this->refresh_access_token();
 				if ( $refresh_result['success'] ) {
 					// Retry with new token
@@ -197,7 +197,7 @@ class IM_Provider_Gmail extends IM_Abstract_Provider {
 		);
 
 		if ( ! $result['success'] ) {
-			if ( isset( $result['status_code'] ) && $result['status_code'] === 401 ) {
+			if ( isset( $result['status_code'] ) && 401 === $result['status_code'] ) {
 				$refresh_result = $this->refresh_access_token();
 				if ( $refresh_result['success'] ) {
 					return $this->test_connection();

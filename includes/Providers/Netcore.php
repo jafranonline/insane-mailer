@@ -103,9 +103,29 @@ class IM_Provider_Netcore extends IM_Abstract_Provider {
 			];
 		}
 
+		// Make a test request to verify the API key.
+		$url = 'https://emailapi.netcoresmartech.com/v2/stats';
+
+		$result = $this->make_request(
+			$url,
+			[
+				'method'  => 'GET',
+				'headers' => [
+					'api_key' => $api_key,
+				],
+			]
+		);
+
+		if ( ! $result['success'] ) {
+			return [
+				'success' => false,
+				'error'   => $result['error'] ?? 'Invalid API key',
+			];
+		}
+
 		return [
 			'success' => true,
-			'message' => 'Netcore API key configured',
+			'message' => 'Connected to Netcore successfully',
 		];
 	}
 }

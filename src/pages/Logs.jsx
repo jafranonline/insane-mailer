@@ -20,7 +20,18 @@ export default function Emails() {
   const [clearing, setClearing] = createSignal(false);
   const [stats, setStats] = createSignal({ pending: 0, sent: 0, failed: 0, paused: 0, total: 0 });
   const [showActionsMenu, setShowActionsMenu] = createSignal(false);
-  const [activeTab, setActiveTab] = createSignal('details');
+  const [actionsAnimating, setActionsAnimating] = createSignal(false);
+
+  const openActionsMenu = () => {
+    setShowActionsMenu(true);
+    setTimeout(() => setActionsAnimating(true), 10);
+  };
+
+  const closeActionsMenu = () => {
+    setActionsAnimating(false);
+    setTimeout(() => setShowActionsMenu(false), 150);
+  };
+  const [activeTab, setActiveTab] = createSignal('body');
 
   const loadEmails = async () => {
     setLoading(true);
@@ -256,24 +267,25 @@ export default function Emails() {
         <div class="im:relative">
           <button
             class="im:flex im:items-center im:gap-2 im:px-3 im:py-2 im:bg-gray-100 im:text-gray-700 im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-200 im:transition-colors"
-            onClick={() => setShowActionsMenu(!showActionsMenu())}
+            onClick={() => showActionsMenu() ? closeActionsMenu() : openActionsMenu()}
           >
             Actions
-            <svg class={`im:w-4 im:h-4 im:transition-transform ${showActionsMenu() ? 'im:rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class={`im:w-4 im:h-4 im:transition-transform im:duration-150 ${showActionsMenu() ? 'im:rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
           <Show when={showActionsMenu()}>
             <div
               class="im:fixed im:inset-0 im:z-10"
-              onClick={() => setShowActionsMenu(false)}
+              onClick={closeActionsMenu}
             />
-            <div class="im:absolute im:right-0 im:mt-1 im:w-44 im:bg-white im:rounded-md im:shadow-lg im:border im:border-gray-200 im:z-20 im:py-1">
+            <div class={`im-actions-dropdown im:absolute im:right-0 im:mt-1 im:w-44 im:bg-white im:rounded-md im:shadow-lg im:border im:border-gray-200 im:z-20 im:py-1 im:transform im:transition-all im:duration-150 im:ease-out im:origin-top-right ${actionsAnimating() ? 'im:opacity-100 im:scale-y-100' : 'im:opacity-0 im:scale-y-95'}`}>
               <button
-                class="im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-gray-700 hover:im:bg-gray-50 im:transition-colors"
+                type="button"
+                class="im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-gray-700 hover:im:bg-gray-50 im:transition-colors im:duration-75 im:text-left"
                 onClick={() => {
                   handleRefresh();
-                  setShowActionsMenu(false);
+                  closeActionsMenu();
                 }}
               >
                 <svg class="im:w-4 im:h-4 im:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -282,10 +294,11 @@ export default function Emails() {
                 Refresh
               </button>
               <button
-                class="im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-gray-700 hover:im:bg-gray-50 im:transition-colors"
+                type="button"
+                class="im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-gray-700 hover:im:bg-gray-50 im:transition-colors im:duration-75 im:text-left"
                 onClick={() => {
                   api.exportCsv(filters().status);
-                  setShowActionsMenu(false);
+                  closeActionsMenu();
                 }}
               >
                 <svg class="im:w-4 im:h-4 im:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -295,10 +308,11 @@ export default function Emails() {
               </button>
               <div class="im:border-t im:border-gray-100 im:my-1" />
               <button
-                class="im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-red-600 hover:im:bg-red-50 im:transition-colors"
+                type="button"
+                class="im-actions-clear im:w-full im:flex im:items-center im:gap-2 im:px-4 im:py-2 im:text-sm im:text-red-600 hover:im:bg-red-50 im:transition-colors im:duration-75 im:text-left"
                 onClick={() => {
                   setShowClearConfirm(true);
-                  setShowActionsMenu(false);
+                  closeActionsMenu();
                 }}
               >
                 <svg class="im:w-4 im:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -387,7 +401,7 @@ export default function Emails() {
                 <For each={emails()}>
                   {(email) => (
                     <tr
-                      class="psmtim:hoverable im:cursor-pointer"
+                      class="im:cursor-pointer hover:im:bg-gray-50 im:transition-colors im:duration-75"
                       onClick={() => setSelectedEmail(email)}
                     >
                       <td class="im:px-5 im:py-4">
@@ -431,7 +445,7 @@ export default function Emails() {
                           </button>
                           <Show when={email.status === 'pending'}>
                             <button
-                              class="psmtim:btn-pause im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-amber-600 im:rounded im:transition-colors"
+                              class="im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-amber-600 hover:im:bg-amber-50 im:rounded im:transition-colors"
                               onClick={() => handlePause(email.id)}
                             >
                               <svg class="im:w-3.5 im:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -442,7 +456,7 @@ export default function Emails() {
                           </Show>
                           <Show when={email.status === 'paused'}>
                             <button
-                              class="psmtim:btn-resume im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-green-600 im:rounded im:transition-colors"
+                              class="im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-green-600 hover:im:bg-green-50 im:rounded im:transition-colors"
                               onClick={() => handleResume(email.id)}
                             >
                               <svg class="im:w-3.5 im:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -591,25 +605,50 @@ export default function Emails() {
               <div class="im:border-b im:border-gray-200 im:px-6">
                 <nav class="im:flex im:gap-6 im:-mb-px">
                   <button
+                    class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'body' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
+                    onClick={() => setActiveTab('body')}
+                  >
+                    Body
+                  </button>
+                  <button
                     class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'details' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
                     onClick={() => setActiveTab('details')}
                   >
                     Details
-                  </button>
-                  <button
-                    class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'content' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
-                    onClick={() => setActiveTab('content')}
-                  >
-                    Content
                   </button>
                 </nav>
               </div>
 
               {/* Tab Content */}
               <div class="im:px-6 im:py-5 im:overflow-y-auto im:max-h-[calc(90vh-220px)]">
+                {/* Body Tab */}
+                <Show when={activeTab() === 'body'}>
+                  <div class="im:space-y-4">
+                    <Show when={selectedEmail().body_html}>
+                      <div
+                        class="im:text-sm im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:max-h-96 im:overflow-y-auto"
+                        innerHTML={selectedEmail().body_html}
+                      />
+                    </Show>
+                    <Show when={!selectedEmail().body_html}>
+                      <div class="im:text-sm im:text-gray-500 im:text-center im:py-8">No HTML body available</div>
+                    </Show>
+                    <Show when={selectedEmail().attachments}>
+                      <div>
+                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Attachments</label>
+                        <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap">{typeof selectedEmail().attachments === 'string' ? selectedEmail().attachments : JSON.stringify(selectedEmail().attachments, null, 2)}</pre>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
+
                 {/* Details Tab */}
                 <Show when={activeTab() === 'details'}>
                   <div class="im:space-y-4">
+                    <div>
+                      <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Subject</label>
+                      <div class="im:text-sm im:text-gray-900">{selectedEmail().subject || '-'}</div>
+                    </div>
                     <div class="im:grid im:grid-cols-3 im:gap-4">
                       <div>
                         <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">ID</label>
@@ -690,51 +729,17 @@ export default function Emails() {
                         </Show>
                       </div>
                     </Show>
-                    <Show when={selectedEmail().provider_response}>
-                      <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Provider Response</label>
-                        <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap im:max-h-24 im:overflow-y-auto">{typeof selectedEmail().provider_response === 'string' ? selectedEmail().provider_response : JSON.stringify(selectedEmail().provider_response, null, 2)}</pre>
-                      </div>
-                    </Show>
-                  </div>
-                </Show>
-
-                {/* Content Tab */}
-                <Show when={activeTab() === 'content'}>
-                  <div class="im:space-y-4">
-                    <div>
-                      <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Subject</label>
-                      <div class="im:text-sm im:text-gray-900">{selectedEmail().subject || '-'}</div>
-                    </div>
-                    <Show when={selectedEmail().body_html}>
-                      <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Body HTML</label>
-                        <div
-                          class="im:text-sm im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:max-h-64 im:overflow-y-auto"
-                          innerHTML={selectedEmail().body_html}
-                        />
-                      </div>
-                    </Show>
-                    <Show when={selectedEmail().body_plain}>
-                      <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Body Plain</label>
-                        <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:max-h-48 im:overflow-y-auto im:whitespace-pre-wrap">{selectedEmail().body_plain}</pre>
-                      </div>
-                    </Show>
-                    <Show when={selectedEmail().attachments}>
-                      <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Attachments</label>
-                        <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap">{typeof selectedEmail().attachments === 'string' ? selectedEmail().attachments : JSON.stringify(selectedEmail().attachments, null, 2)}</pre>
-                      </div>
-                    </Show>
                     <Show when={selectedEmail().headers}>
                       <div>
                         <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Headers</label>
                         <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap im:max-h-32 im:overflow-y-auto">{typeof selectedEmail().headers === 'string' ? selectedEmail().headers : JSON.stringify(JSON.parse(selectedEmail().headers || '{}'), null, 2)}</pre>
                       </div>
                     </Show>
-                    <Show when={!selectedEmail().body_html && !selectedEmail().body_plain}>
-                      <div class="im:text-sm im:text-gray-500 im:text-center im:py-8">No content available</div>
+                    <Show when={selectedEmail().provider_response}>
+                      <div>
+                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Provider Response</label>
+                        <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap im:max-h-24 im:overflow-y-auto">{typeof selectedEmail().provider_response === 'string' ? selectedEmail().provider_response : JSON.stringify(selectedEmail().provider_response, null, 2)}</pre>
+                      </div>
                     </Show>
                   </div>
                 </Show>
