@@ -4,8 +4,8 @@
  * Plugin URI: https://arraystory.com/insane-mailer
  * Description: Fast, queue-powered SMTP and email delivery. Send through 20+ providers with email logs, retries, and bounce handling.
  * Version: 1.0.0
- * Author: ArrayStory
- * Author URI: https://arraystory.com
+ * Author: Jafran Hasan
+ * Author URI: https://jaf.run
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: insane-mailer

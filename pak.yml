@@ -9,5 +9,7 @@ excludes:
     - src
     - pak.yml
     - postcss.config.js
+    - phpcs.xml
+    - assets/*.map
 compression: 9
 max_file_size: 10MB
