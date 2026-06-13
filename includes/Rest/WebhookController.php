@@ -47,7 +47,9 @@ class INSANEMAILER_Rest_Webhook_Controller extends INSANEMAILER_Rest_Controller 
 
 		if ( 'SubscriptionConfirmation' === $message_type ) {
 			$subscribe_url = $params['SubscribeURL'] ?? '';
-			if ( ! empty( $subscribe_url ) ) {
+			// Only follow genuine Amazon SNS confirmation URLs. This endpoint is
+			// public, so an arbitrary SubscribeURL would otherwise allow SSRF.
+			if ( ! empty( $subscribe_url ) && self::is_sns_url( $subscribe_url ) ) {
 				wp_remote_get( $subscribe_url );
 			}
 			return $this->success_response( [ 'message' => 'Subscription confirmed' ] );
@@ -138,6 +140,25 @@ class INSANEMAILER_Rest_Webhook_Controller extends INSANEMAILER_Rest_Controller 
 		}
 
 		return $this->success_response( [ 'message' => 'Webhook processed' ] );
+	}
+
+	/**
+	 * Validate that a URL is a genuine Amazon SNS endpoint over HTTPS.
+	 *
+	 * Guards the SubscriptionConfirmation handler against SSRF by rejecting
+	 * any host that is not sns.<region>.amazonaws.com.
+	 *
+	 * @param string $url URL to validate.
+	 * @return bool
+	 */
+	private static function is_sns_url( $url ) {
+		$parts = wp_parse_url( $url );
+
+		if ( empty( $parts['scheme'] ) || 'https' !== $parts['scheme'] || empty( $parts['host'] ) ) {
+			return false;
+		}
+
+		return (bool) preg_match( '/^sns\.[a-z0-9-]+\.amazonaws\.com$/', $parts['host'] );
 	}
 
 	private function update_email_status( $message_id, $status ) {

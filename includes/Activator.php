@@ -42,7 +42,10 @@ class INSANEMAILER_Activator {
 		}
 
 		// Migrate options.
-		foreach ( [ 'im_settings' => 'insanemailer_settings', 'im_db_version' => 'insanemailer_db_version' ] as $old_option => $new_option ) {
+		foreach ( [
+			'im_settings' => 'insanemailer_settings',
+			'im_db_version' => 'insanemailer_db_version',
+		] as $old_option => $new_option ) {
 			$old_value = get_option( $old_option, null );
 			if ( null !== $old_value && false === get_option( $new_option, false ) ) {
 				add_option( $new_option, $old_value );
@@ -154,7 +157,7 @@ class INSANEMAILER_Activator {
 			'send_mode'          => 'direct',
 			'auto_plain_text'    => true,
 			'queue_runner'       => 'wp_cron',
-			'external_token'     => wp_generate_password( 32, false ),
+			'cron_token'         => '',
 			'bulk_limit'         => 50,
 			'rate_limit'         => 14,
 			'max_retries'        => 3,

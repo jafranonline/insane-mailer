@@ -108,7 +108,7 @@ class INSANEMAILER_Rest_Queue_Controller extends INSANEMAILER_Rest_Controller {
 
 		$valid_token = $settings['cron_token'] ?? '';
 
-		if ( empty( $valid_token ) || $token !== $valid_token ) {
+		if ( empty( $valid_token ) || ! hash_equals( (string) $valid_token, (string) $token ) ) {
 			return $this->error_response( 'Invalid token', 401 );
 		}
 

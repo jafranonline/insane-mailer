@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Insane Mailer
+ * Plugin Name: Insane Mailer - SMTP, Email Logs & Queue
  * Plugin URI: https://arraystory.com/insane-mailer
  * Description: Fast, queue-powered SMTP and email delivery. Send through 20+ providers with email logs, retries, and bounce handling.
  * Version: 1.0.0
@@ -12,7 +12,7 @@
  * Domain Path: /languages
  * Requires at least: 6.2
  * Requires PHP: 7.4
- * Tested up to: 6.9
+ * Tested up to: 7.0
  *
  * @package InsaneMailer
  */
