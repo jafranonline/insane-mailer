@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-interface IM_Provider_Interface {
+interface INSANEMAILER_Provider_Interface {
 
 	public function __construct( $credentials );
 

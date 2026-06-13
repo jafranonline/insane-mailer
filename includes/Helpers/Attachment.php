@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Attachment {
+class INSANEMAILER_Attachment {
 
 	public static function store_attachments( $email_id, $attachments ) {
 		if ( empty( $attachments ) ) {
@@ -12,10 +12,10 @@ class IM_Attachment {
 		}
 
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments/' . $email_id;
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments/' . $email_id;
 
-		if ( ! file_exists( $im_dir ) ) {
-			wp_mkdir_p( $im_dir );
+		if ( ! file_exists( $insanemailer_dir ) ) {
+			wp_mkdir_p( $insanemailer_dir );
 		}
 
 		$stored_paths = [];
@@ -23,7 +23,7 @@ class IM_Attachment {
 		foreach ( $attachments as $attachment_path ) {
 			if ( file_exists( $attachment_path ) ) {
 				$filename = basename( $attachment_path );
-				$new_path = $im_dir . '/' . $filename;
+				$new_path = $insanemailer_dir . '/' . $filename;
 
 				if ( copy( $attachment_path, $new_path ) ) {
 					$stored_paths[] = $new_path;
@@ -36,13 +36,13 @@ class IM_Attachment {
 
 	public static function delete_attachments( $email_id ) {
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments/' . $email_id;
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments/' . $email_id;
 
-		if ( ! file_exists( $im_dir ) ) {
+		if ( ! file_exists( $insanemailer_dir ) ) {
 			return true;
 		}
 
-		$files = glob( $im_dir . '/*' );
+		$files = glob( $insanemailer_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
 				wp_delete_file( $file );
@@ -54,23 +54,23 @@ class IM_Attachment {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			WP_Filesystem();
 		}
-		return $wp_filesystem->rmdir( $im_dir );
+		return $wp_filesystem->rmdir( $insanemailer_dir );
 	}
 
 	public static function cleanup_orphaned_attachments() {
 		global $wpdb;
 
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments';
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments';
 
-		if ( ! file_exists( $im_dir ) ) {
+		if ( ! file_exists( $insanemailer_dir ) ) {
 			return 0;
 		}
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 		$deleted    = 0;
 
-		$dirs = glob( $im_dir . '/*', GLOB_ONLYDIR );
+		$dirs = glob( $insanemailer_dir . '/*', GLOB_ONLYDIR );
 		foreach ( $dirs as $dir ) {
 			$email_id = basename( $dir );
 

@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Mailer {
+class INSANEMAILER_Mailer {
 
 	private static $instance = null;
 	private $settings;
@@ -19,7 +19,7 @@ class IM_Mailer {
 	}
 
 	private function __construct() {
-		$this->settings = get_option( 'im_settings', [] );
+		$this->settings = get_option( 'insanemailer_settings', [] );
 		add_action( 'phpmailer_init', [ $this, 'intercept_phpmailer' ], 999 );
 		add_filter( 'pre_wp_mail', [ $this, 'maybe_queue_mail' ], 10, 2 );
 	}
@@ -64,7 +64,7 @@ class IM_Mailer {
 	private function queue_from_atts( $atts ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$to          = $atts['to'] ?? '';
 		$subject     = $atts['subject'] ?? '';
@@ -138,7 +138,7 @@ class IM_Mailer {
 		}
 
 		$priority = 2;
-		$priority = apply_filters( 'im_priority', $priority, $to_email, $atts );
+		$priority = apply_filters( 'insanemailer_priority', $priority, $to_email, $atts );
 
 		$status = ! empty( $this->settings['pause_sending'] ) ? 'paused' : 'pending';
 
@@ -166,7 +166,7 @@ class IM_Mailer {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table for email queue.
 		$inserted = $wpdb->insert( $table_name, $data );
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( $inserted ) {
 			$email_id = $wpdb->insert_id;
@@ -175,7 +175,7 @@ class IM_Mailer {
 				$this->handle_attachments( $email_id, (array) $attachments );
 			}
 
-			do_action( 'im_email_queued', $email_id, $data );
+			do_action( 'insanemailer_email_queued', $email_id, $data );
 		}
 	}
 
@@ -257,36 +257,36 @@ class IM_Mailer {
 				throw new Exception( $result['error'] ?? 'Unknown error' );
 			}
 
-			do_action( 'im_email_sent', $this->current_direct_email_id, $result );
+			do_action( 'insanemailer_email_sent', $this->current_direct_email_id, $result );
 		} catch ( Exception $e ) {
 			$this->update_direct_email_status( 'failed', $e->getMessage() );
-			do_action( 'im_email_failed', $this->current_direct_email_id, $e->getMessage() );
+			do_action( 'insanemailer_email_failed', $this->current_direct_email_id, $e->getMessage() );
 		}
 	}
 
 	private function get_provider_class( $provider_name ) {
 		$providers = [
-			'ses'          => 'IM_Provider_SES',
-			'mailgun'      => 'IM_Provider_Mailgun',
-			'sendgrid'     => 'IM_Provider_SendGrid',
-			'brevo'        => 'IM_Provider_Brevo',
-			'sparkpost'    => 'IM_Provider_SparkPost',
-			'netcore'      => 'IM_Provider_Netcore',
-			'postmark'     => 'IM_Provider_Postmark',
-			'elasticemail' => 'IM_Provider_ElasticEmail',
-			'smtpcom'      => 'IM_Provider_SmtpCom',
-			'smtp'         => 'IM_Provider_SMTP',
-			'gmail'        => 'IM_Provider_Gmail',
-			'outlook'      => 'IM_Provider_Outlook',
-			'socketlabs'   => 'IM_Provider_SocketLabs',
-			'mandrill'     => 'IM_Provider_Mandrill',
-			'smtp2go'      => 'IM_Provider_Smtp2go',
-			'mailtrap'     => 'IM_Provider_Mailtrap',
-			'mailjet'      => 'IM_Provider_Mailjet',
-			'zeptomail'    => 'IM_Provider_ZeptoMail',
-			'mailersend'   => 'IM_Provider_MailerSend',
-			'loops'        => 'IM_Provider_Loops',
-			'resend'       => 'IM_Provider_Resend',
+			'ses'          => 'INSANEMAILER_Provider_SES',
+			'mailgun'      => 'INSANEMAILER_Provider_Mailgun',
+			'sendgrid'     => 'INSANEMAILER_Provider_SendGrid',
+			'brevo'        => 'INSANEMAILER_Provider_Brevo',
+			'sparkpost'    => 'INSANEMAILER_Provider_SparkPost',
+			'netcore'      => 'INSANEMAILER_Provider_Netcore',
+			'postmark'     => 'INSANEMAILER_Provider_Postmark',
+			'elasticemail' => 'INSANEMAILER_Provider_ElasticEmail',
+			'smtpcom'      => 'INSANEMAILER_Provider_SmtpCom',
+			'smtp'         => 'INSANEMAILER_Provider_SMTP',
+			'gmail'        => 'INSANEMAILER_Provider_Gmail',
+			'outlook'      => 'INSANEMAILER_Provider_Outlook',
+			'socketlabs'   => 'INSANEMAILER_Provider_SocketLabs',
+			'mandrill'     => 'INSANEMAILER_Provider_Mandrill',
+			'smtp2go'      => 'INSANEMAILER_Provider_Smtp2go',
+			'mailtrap'     => 'INSANEMAILER_Provider_Mailtrap',
+			'mailjet'      => 'INSANEMAILER_Provider_Mailjet',
+			'zeptomail'    => 'INSANEMAILER_Provider_ZeptoMail',
+			'mailersend'   => 'INSANEMAILER_Provider_MailerSend',
+			'loops'        => 'INSANEMAILER_Provider_Loops',
+			'resend'       => 'INSANEMAILER_Provider_Resend',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -294,7 +294,7 @@ class IM_Mailer {
 		}
 
 		$class_name = $providers[ $provider_name ];
-		$file_path  = IM_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'IM_Provider_', '', $class_name ) . '.php';
+		$file_path  = INSANEMAILER_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'INSANEMAILER_Provider_', '', $class_name ) . '.php';
 
 		if ( file_exists( $file_path ) ) {
 			require_once $file_path;
@@ -305,10 +305,10 @@ class IM_Mailer {
 
 	private function handle_attachments( $email_id, $attachments ) {
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments/' . $email_id;
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments/' . $email_id;
 
-		if ( ! file_exists( $im_dir ) ) {
-			wp_mkdir_p( $im_dir );
+		if ( ! file_exists( $insanemailer_dir ) ) {
+			wp_mkdir_p( $insanemailer_dir );
 		}
 
 		$stored_paths = [];
@@ -316,7 +316,7 @@ class IM_Mailer {
 		foreach ( $attachments as $attachment_path ) {
 			if ( file_exists( $attachment_path ) ) {
 				$filename   = basename( $attachment_path );
-				$new_path   = $im_dir . '/' . $filename;
+				$new_path   = $insanemailer_dir . '/' . $filename;
 				$copied     = copy( $attachment_path, $new_path );
 
 				if ( $copied ) {
@@ -327,7 +327,7 @@ class IM_Mailer {
 
 		if ( ! empty( $stored_paths ) ) {
 			global $wpdb;
-			$table_name = $wpdb->prefix . 'im_emails';
+			$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, updating email record.
 			$wpdb->update(
@@ -355,7 +355,7 @@ class IM_Mailer {
 		}
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$data = [
 			'status'     => $status,
@@ -375,13 +375,13 @@ class IM_Mailer {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 	}
 
 	private function log_direct_email( $atts ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$to          = $atts['to'] ?? '';
 		$subject     = $atts['subject'] ?? '';
@@ -478,7 +478,7 @@ class IM_Mailer {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table for email logging.
 		$inserted = $wpdb->insert( $table_name, $data );
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( $inserted ) {
 			$email_id = $wpdb->insert_id;

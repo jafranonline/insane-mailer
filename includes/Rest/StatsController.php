@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Stats_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Stats_Controller extends INSANEMAILER_Rest_Controller {
 
 	public function register_routes() {
 		register_rest_route(
@@ -38,7 +38,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	public function get_analytics( $request ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 		$period     = $request->get_param( 'period' ) ? $request->get_param( 'period' ) : 30;
 		$start_date = $request->get_param( 'start_date' );
 		$end_date   = $request->get_param( 'end_date' );
@@ -102,7 +102,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_summary( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$cache_key = 'im_summary_' . md5( $start . $end );
+		$cache_key = 'insanemailer_summary_' . md5( $start . $end );
 		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $results ) {
@@ -134,7 +134,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_daily_stats( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$cache_key = 'im_daily_' . md5( $start . $end );
+		$cache_key = 'insanemailer_daily_' . md5( $start . $end );
 		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $results ) {
@@ -165,7 +165,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_provider_stats( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$cache_key = 'im_provider_' . md5( $start . $end );
+		$cache_key = 'insanemailer_provider_' . md5( $start . $end );
 		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $results ) {
@@ -202,7 +202,7 @@ class IM_Rest_Stats_Controller extends IM_Rest_Controller {
 	private function get_status_breakdown( $table_name, $start, $end ) {
 		global $wpdb;
 
-		$cache_key = 'im_status_' . md5( $start . $end );
+		$cache_key = 'insanemailer_status_' . md5( $start . $end );
 		$results   = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $results ) {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Insane Mailer
  * Plugin URI: https://arraystory.com/insane-mailer
- * Description: The SMTP plugin you'll never replace. Blazing fast, queue-powered, zero bloat, less than 1MB.
+ * Description: Fast, queue-powered SMTP and email delivery. Send through 20+ providers with email logs, retries, and bounce handling.
  * Version: 1.0.0
  * Author: ArrayStory
  * Author URI: https://arraystory.com
@@ -21,19 +21,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'IM_VERSION', '1.0.0' );
-define( 'IM_PLUGIN_FILE', __FILE__ );
-define( 'IM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'IM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'IM_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'INSANEMAILER_VERSION', '1.0.0' );
+define( 'INSANEMAILER_PLUGIN_FILE', __FILE__ );
+define( 'INSANEMAILER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'INSANEMAILER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'INSANEMAILER_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
-require_once IM_PLUGIN_DIR . 'includes/Activator.php';
-require_once IM_PLUGIN_DIR . 'includes/Deactivator.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Activator.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Deactivator.php';
 
-register_activation_hook( __FILE__, [ 'IM_Activator', 'activate' ] );
-register_deactivation_hook( __FILE__, [ 'IM_Deactivator', 'deactivate' ] );
+register_activation_hook( __FILE__, [ 'INSANEMAILER_Activator', 'activate' ] );
+register_deactivation_hook( __FILE__, [ 'INSANEMAILER_Deactivator', 'deactivate' ] );
 
-add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'im_plugin_action_links' );
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'insanemailer_plugin_action_links' );
 
 /**
  * Add settings link to plugin action links.
@@ -41,7 +41,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'im_plugin_act
  * @param array $links Existing action links.
  * @return array Modified action links.
  */
-function im_plugin_action_links( array $links ): array {
+function insanemailer_plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
 		'<a href="%s">%s</a>',
 		admin_url( 'options-general.php?page=insane-mailer' ),
@@ -54,28 +54,28 @@ function im_plugin_action_links( array $links ): array {
 /**
  * Initialize plugin core functionality.
  */
-function im_init() {
-	require_once IM_PLUGIN_DIR . 'includes/Mailer.php';
-	require_once IM_PLUGIN_DIR . 'includes/Queue.php';
-	require_once IM_PLUGIN_DIR . 'includes/Cron.php';
-	require_once IM_PLUGIN_DIR . 'includes/Admin.php';
+function insanemailer_init() {
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Mailer.php';
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Queue.php';
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Cron.php';
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Admin.php';
 
-	im_maybe_upgrade();
+	insanemailer_maybe_upgrade();
 
-	IM_Mailer::instance();
-	IM_Queue::instance();
-	IM_Cron::instance();
-	IM_Admin::instance();
+	INSANEMAILER_Mailer::instance();
+	INSANEMAILER_Queue::instance();
+	INSANEMAILER_Cron::instance();
+	INSANEMAILER_Admin::instance();
 }
-add_action( 'plugins_loaded', 'im_init' );
+add_action( 'plugins_loaded', 'insanemailer_init' );
 
 /**
  * Run database upgrades if needed.
  */
-function im_maybe_upgrade() {
-	$db_version = get_option( 'im_db_version', '0' );
+function insanemailer_maybe_upgrade() {
+	$db_version = get_option( 'insanemailer_db_version', '0' );
 
-	if ( version_compare( $db_version, IM_VERSION, '<' ) ) {
-		IM_Activator::activate();
+	if ( version_compare( $db_version, INSANEMAILER_VERSION, '<' ) ) {
+		INSANEMAILER_Activator::activate();
 	}
 }

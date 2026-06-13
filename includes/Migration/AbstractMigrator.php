@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/MigratorInterface.php';
 
-abstract class IM_Abstract_Migrator implements IM_Migrator_Interface {
+abstract class INSANEMAILER_Abstract_Migrator implements INSANEMAILER_Migrator_Interface {
 
 	/**
 	 * WordPress option name for the source plugin.

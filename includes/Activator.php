@@ -4,9 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Activator {
+class INSANEMAILER_Activator {
 
 	public static function activate() {
+		self::migrate_legacy_prefix();
 		self::create_tables();
 		self::maybe_upgrade_tables();
 		self::set_default_settings();
@@ -16,10 +17,54 @@ class IM_Activator {
 		flush_rewrite_rules();
 	}
 
+	/**
+	 * One-time migration from the legacy "im_" prefix to "insanemailer_".
+	 *
+	 * Renames the emails table, copies options, and clears orphaned cron
+	 * events left behind by versions that used the shorter prefix. Runs
+	 * before create_tables() so the rename happens before any empty table
+	 * would be created.
+	 */
+	private static function migrate_legacy_prefix() {
+		global $wpdb;
+
+		$old_table = $wpdb->prefix . 'im_emails';
+		$new_table = $wpdb->prefix . 'insanemailer_emails';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, not cacheable.
+		$old_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old_table ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, not cacheable.
+		$new_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
+
+		if ( $old_exists && ! $new_exists ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- One-time table rename.
+			$wpdb->query( $wpdb->prepare( 'RENAME TABLE %i TO %i', $old_table, $new_table ) );
+		}
+
+		// Migrate options.
+		foreach ( [ 'im_settings' => 'insanemailer_settings', 'im_db_version' => 'insanemailer_db_version' ] as $old_option => $new_option ) {
+			$old_value = get_option( $old_option, null );
+			if ( null !== $old_value && false === get_option( $new_option, false ) ) {
+				add_option( $new_option, $old_value );
+			}
+			if ( null !== $old_value ) {
+				delete_option( $old_option );
+			}
+		}
+
+		// Clear orphaned cron events scheduled under the old hook names.
+		wp_clear_scheduled_hook( 'im_process_queue' );
+		wp_clear_scheduled_hook( 'im_cleanup_old_emails' );
+
+		// Drop stale transients from the old prefix.
+		delete_transient( 'im_connection_status' );
+		delete_transient( 'im_queue_lock' );
+	}
+
 	private static function maybe_upgrade_tables() {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, not cacheable.
 		$column_exists = $wpdb->get_var(
@@ -57,7 +102,7 @@ class IM_Activator {
 		global $wpdb;
 
 		$charset_collate = $wpdb->get_charset_collate();
-		$table_name      = $wpdb->prefix . 'im_emails';
+		$table_name      = $wpdb->prefix . 'insanemailer_emails';
 
 		$sql = "CREATE TABLE IF NOT EXISTS $table_name (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -96,7 +141,7 @@ class IM_Activator {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		update_option( 'im_db_version', IM_VERSION );
+		update_option( 'insanemailer_db_version', INSANEMAILER_VERSION );
 	}
 
 	private static function set_default_settings() {
@@ -123,17 +168,17 @@ class IM_Activator {
 			'allow_site_override' => false,
 		];
 
-		if ( ! get_option( 'im_settings' ) ) {
-			add_option( 'im_settings', $default_settings );
+		if ( ! get_option( 'insanemailer_settings' ) ) {
+			add_option( 'insanemailer_settings', $default_settings );
 		}
 	}
 
 	private static function create_upload_directory() {
 		$upload_dir = wp_upload_dir();
-		$im_dir     = $upload_dir['basedir'] . '/im-attachments';
+		$insanemailer_dir     = $upload_dir['basedir'] . '/insanemailer-attachments';
 
-		if ( ! file_exists( $im_dir ) ) {
-			wp_mkdir_p( $im_dir );
+		if ( ! file_exists( $insanemailer_dir ) ) {
+			wp_mkdir_p( $insanemailer_dir );
 
 			global $wp_filesystem;
 			if ( empty( $wp_filesystem ) ) {
@@ -141,12 +186,12 @@ class IM_Activator {
 				WP_Filesystem();
 			}
 
-			$htaccess_file = $im_dir . '/.htaccess';
+			$htaccess_file = $insanemailer_dir . '/.htaccess';
 			if ( ! file_exists( $htaccess_file ) ) {
 				$wp_filesystem->put_contents( $htaccess_file, 'Deny from all', FS_CHMOD_FILE );
 			}
 
-			$index_file = $im_dir . '/index.php';
+			$index_file = $insanemailer_dir . '/index.php';
 			if ( ! file_exists( $index_file ) ) {
 				$wp_filesystem->put_contents( $index_file, '<?php // Silence is golden', FS_CHMOD_FILE );
 			}
@@ -154,12 +199,12 @@ class IM_Activator {
 	}
 
 	private static function schedule_cron() {
-		if ( ! wp_next_scheduled( 'im_process_queue' ) ) {
-			wp_schedule_event( time(), 'every_minute', 'im_process_queue' );
+		if ( ! wp_next_scheduled( 'insanemailer_process_queue' ) ) {
+			wp_schedule_event( time(), 'every_minute', 'insanemailer_process_queue' );
 		}
 
-		if ( ! wp_next_scheduled( 'im_cleanup_old_emails' ) ) {
-			wp_schedule_event( time(), 'daily', 'im_cleanup_old_emails' );
+		if ( ! wp_next_scheduled( 'insanemailer_cleanup_old_emails' ) ) {
+			wp_schedule_event( time(), 'daily', 'insanemailer_cleanup_old_emails' );
 		}
 	}
 }

@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Providers/AbstractProvider.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Providers/AbstractProvider.php';
 
-class IM_Provider_Mailtrap extends IM_Abstract_Provider {
+class INSANEMAILER_Provider_Mailtrap extends INSANEMAILER_Abstract_Provider {
 
 	public function get_name() {
 		return 'Mailtrap';

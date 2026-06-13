@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Providers/ProviderInterface.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Providers/ProviderInterface.php';
 
-abstract class IM_Abstract_Provider implements IM_Provider_Interface {
+abstract class INSANEMAILER_Abstract_Provider implements INSANEMAILER_Provider_Interface {
 
 	protected $credentials = [];
 

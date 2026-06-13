@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-abstract class IM_Rest_Controller extends WP_REST_Controller {
+abstract class INSANEMAILER_Rest_Controller extends WP_REST_Controller {
 
 	protected $namespace = 'insane-mailer/v1';
 

@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Cron {
+class INSANEMAILER_Cron {
 
 	private static $instance = null;
 
@@ -17,8 +17,8 @@ class IM_Cron {
 
 	private function __construct() {
 		add_filter( 'cron_schedules', [ $this, 'add_cron_schedules' ] );
-		add_action( 'im_process_queue', [ $this, 'process_queue' ] );
-		add_action( 'im_cleanup_old_emails', [ $this, 'cleanup_old_emails' ] );
+		add_action( 'insanemailer_process_queue', [ $this, 'process_queue' ] );
+		add_action( 'insanemailer_cleanup_old_emails', [ $this, 'cleanup_old_emails' ] );
 	}
 
 	public function add_cron_schedules( $schedules ) {
@@ -46,17 +46,17 @@ class IM_Cron {
 	}
 
 	public function process_queue() {
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		if ( 'wp_cron' !== ( $settings['queue_runner'] ?? 'wp_cron' ) ) {
 			return;
 		}
 
-		IM_Queue::instance()->process();
+		INSANEMAILER_Queue::instance()->process();
 	}
 
 	public function cleanup_old_emails() {
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		$auto_delete_days = $settings['auto_delete_days'] ?? 14;
 
@@ -65,7 +65,7 @@ class IM_Cron {
 		}
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$auto_delete_days} days" ) );
 
@@ -99,20 +99,20 @@ class IM_Cron {
 			)
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		$this->cleanup_orphan_attachments();
 	}
 
 	private function delete_email_attachments( $email_id ) {
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments/' . $email_id;
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments/' . $email_id;
 
-		if ( ! file_exists( $im_dir ) ) {
+		if ( ! file_exists( $insanemailer_dir ) ) {
 			return;
 		}
 
-		$files = glob( $im_dir . '/*' );
+		$files = glob( $insanemailer_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
 				wp_delete_file( $file );
@@ -124,22 +124,22 @@ class IM_Cron {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			WP_Filesystem();
 		}
-		$wp_filesystem->rmdir( $im_dir );
+		$wp_filesystem->rmdir( $insanemailer_dir );
 	}
 
 	private function cleanup_orphan_attachments() {
 		global $wpdb;
 
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments';
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments';
 
-		if ( ! file_exists( $im_dir ) ) {
+		if ( ! file_exists( $insanemailer_dir ) ) {
 			return;
 		}
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
-		$dirs = glob( $im_dir . '/*', GLOB_ONLYDIR );
+		$dirs = glob( $insanemailer_dir . '/*', GLOB_ONLYDIR );
 		foreach ( $dirs as $dir ) {
 			$email_id = basename( $dir );
 

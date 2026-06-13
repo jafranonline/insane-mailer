@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Deactivator {
+class INSANEMAILER_Deactivator {
 
 	public static function deactivate() {
 		self::clear_scheduled_crons();
@@ -12,7 +12,7 @@ class IM_Deactivator {
 	}
 
 	private static function clear_scheduled_crons() {
-		wp_clear_scheduled_hook( 'im_process_queue' );
-		wp_clear_scheduled_hook( 'im_cleanup_old_emails' );
+		wp_clear_scheduled_hook( 'insanemailer_process_queue' );
+		wp_clear_scheduled_hook( 'insanemailer_cleanup_old_emails' );
 	}
 }

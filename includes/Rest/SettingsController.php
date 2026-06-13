@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Settings_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller {
 
 	public function register_routes() {
 		register_rest_route(
@@ -118,7 +118,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 	}
 
 	public function get_connection_status( $request ) {
-		$status = get_transient( 'im_connection_status' );
+		$status = get_transient( 'insanemailer_connection_status' );
 
 		if ( false === $status ) {
 			return $this->success_response( [
@@ -150,7 +150,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			'auto_delete_days'   => 14,
 		];
 
-		$settings = get_option( 'im_settings', $default_settings );
+		$settings = get_option( 'insanemailer_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
 
 		// Mask sensitive credentials
@@ -181,7 +181,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			return $this->error_response( 'No settings provided' );
 		}
 
-		$current_settings = get_option( 'im_settings', [] );
+		$current_settings = get_option( 'insanemailer_settings', [] );
 
 		if ( isset( $new_settings['credentials'] ) ) {
 			foreach ( $new_settings['credentials'] as $key => $value ) {
@@ -218,7 +218,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 
 		if ( ! $connection_valid ) {
 			// Save failed connection status (24 hours)
-			set_transient( 'im_connection_status', [
+			set_transient( 'insanemailer_connection_status', [
 				'status'    => 'error',
 				'message'   => $connection_error,
 				'timestamp' => time(),
@@ -227,13 +227,13 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 		}
 
 		// Save successful connection status (24 hours)
-		set_transient( 'im_connection_status', [
+		set_transient( 'insanemailer_connection_status', [
 			'status'    => 'success',
 			'message'   => 'Connected',
 			'timestamp' => time(),
 		], DAY_IN_SECONDS );
 
-		update_option( 'im_settings', $new_settings );
+		update_option( 'insanemailer_settings', $new_settings );
 
 		$this->maybe_reschedule_cron( $current_settings, $new_settings );
 
@@ -256,13 +256,13 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			return;
 		}
 
-		$timestamp = wp_next_scheduled( 'im_process_queue' );
+		$timestamp = wp_next_scheduled( 'insanemailer_process_queue' );
 		if ( $timestamp ) {
-			wp_unschedule_event( $timestamp, 'im_process_queue' );
+			wp_unschedule_event( $timestamp, 'insanemailer_process_queue' );
 		}
 
 		if ( 'wp_cron' === $new_runner ) {
-			wp_schedule_event( time(), $new_interval, 'im_process_queue' );
+			wp_schedule_event( time(), $new_interval, 'insanemailer_process_queue' );
 		}
 	}
 
@@ -289,7 +289,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			$result = $provider_instance->test_connection();
 
 			if ( $result['success'] ) {
-				set_transient( 'im_connection_status', [
+				set_transient( 'insanemailer_connection_status', [
 					'status'    => 'success',
 					'message'   => $result['message'] ?? 'Connected',
 					'timestamp' => time(),
@@ -297,7 +297,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 				return $this->success_response( $result );
 			}
 
-			set_transient( 'im_connection_status', [
+			set_transient( 'insanemailer_connection_status', [
 				'status'    => 'error',
 				'message'   => $result['error'] ?? 'Connection test failed',
 				'timestamp' => time(),
@@ -326,7 +326,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			return $this->error_response( 'Invalid email address' );
 		}
 
-		$settings  = get_option( 'im_settings', [] );
+		$settings  = get_option( 'insanemailer_settings', [] );
 		$provider  = $settings['provider'] ?? 'default';
 		$site_name = get_bloginfo( 'name' );
 		$site_url  = home_url();
@@ -467,10 +467,10 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 
 	public function regenerate_cron_token( $request ) {
 		$token    = wp_generate_password( 32, false );
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		$settings['cron_token'] = $token;
-		update_option( 'im_settings', $settings );
+		update_option( 'insanemailer_settings', $settings );
 
 		return $this->success_response( [ 'token' => $token ] );
 	}
@@ -495,53 +495,53 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 
 		$constant_map = [
 			// SES
-			'ses_access_key'         => 'IM_SES_ACCESS_KEY',
-			'ses_secret_key'         => 'IM_SES_SECRET_KEY',
+			'ses_access_key'         => 'INSANEMAILER_SES_ACCESS_KEY',
+			'ses_secret_key'         => 'INSANEMAILER_SES_SECRET_KEY',
 			// SendGrid
-			'sendgrid_api_key'       => 'IM_SENDGRID_API_KEY',
+			'sendgrid_api_key'       => 'INSANEMAILER_SENDGRID_API_KEY',
 			// Mailgun
-			'mailgun_api_key'        => 'IM_MAILGUN_API_KEY',
+			'mailgun_api_key'        => 'INSANEMAILER_MAILGUN_API_KEY',
 			// Postmark
-			'postmark_server_token'  => 'IM_POSTMARK_TOKEN',
+			'postmark_server_token'  => 'INSANEMAILER_POSTMARK_TOKEN',
 			// Brevo
-			'brevo_api_key'          => 'IM_BREVO_API_KEY',
+			'brevo_api_key'          => 'INSANEMAILER_BREVO_API_KEY',
 			// SparkPost
-			'sparkpost_api_key'      => 'IM_SPARKPOST_API_KEY',
+			'sparkpost_api_key'      => 'INSANEMAILER_SPARKPOST_API_KEY',
 			// Mailjet
-			'mailjet_api_key'        => 'IM_MAILJET_API_KEY',
-			'mailjet_secret_key'     => 'IM_MAILJET_SECRET_KEY',
+			'mailjet_api_key'        => 'INSANEMAILER_MAILJET_API_KEY',
+			'mailjet_secret_key'     => 'INSANEMAILER_MAILJET_SECRET_KEY',
 			// Elastic Email
-			'elasticemail_api_key'   => 'IM_ELASTICEMAIL_API_KEY',
+			'elasticemail_api_key'   => 'INSANEMAILER_ELASTICEMAIL_API_KEY',
 			// SMTP.com
-			'smtpcom_api_key'        => 'IM_SMTPCOM_API_KEY',
+			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
-			'pepipost_api_key'       => 'IM_PEPIPOST_API_KEY',
+			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
 			// Resend
-			'resend_api_key'         => 'IM_RESEND_API_KEY',
+			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend
-			'mailersend_api_key'     => 'IM_MAILERSEND_API_KEY',
+			'mailersend_api_key'     => 'INSANEMAILER_MAILERSEND_API_KEY',
 			// Mailtrap
-			'mailtrap_api_key'       => 'IM_MAILTRAP_API_KEY',
+			'mailtrap_api_key'       => 'INSANEMAILER_MAILTRAP_API_KEY',
 			// Loops
-			'loops_api_key'          => 'IM_LOOPS_API_KEY',
+			'loops_api_key'          => 'INSANEMAILER_LOOPS_API_KEY',
 			// Mandrill
-			'mandrill_api_key'       => 'IM_MANDRILL_API_KEY',
+			'mandrill_api_key'       => 'INSANEMAILER_MANDRILL_API_KEY',
 			// SMTP2GO
-			'smtp2go_api_key'        => 'IM_SMTP2GO_API_KEY',
+			'smtp2go_api_key'        => 'INSANEMAILER_SMTP2GO_API_KEY',
 			// SocketLabs
-			'socketlabs_server_id'   => 'IM_SOCKETLABS_SERVER_ID',
-			'socketlabs_api_key'     => 'IM_SOCKETLABS_API_KEY',
+			'socketlabs_server_id'   => 'INSANEMAILER_SOCKETLABS_SERVER_ID',
+			'socketlabs_api_key'     => 'INSANEMAILER_SOCKETLABS_API_KEY',
 			// ZeptoMail
-			'zeptomail_api_key'      => 'IM_ZEPTOMAIL_TOKEN',
+			'zeptomail_api_key'      => 'INSANEMAILER_ZEPTOMAIL_TOKEN',
 			// Gmail
-			'gmail_client_id'        => 'IM_GMAIL_CLIENT_ID',
-			'gmail_client_secret'    => 'IM_GMAIL_CLIENT_SECRET',
+			'gmail_client_id'        => 'INSANEMAILER_GMAIL_CLIENT_ID',
+			'gmail_client_secret'    => 'INSANEMAILER_GMAIL_CLIENT_SECRET',
 			// Outlook
-			'outlook_client_id'      => 'IM_OUTLOOK_CLIENT_ID',
-			'outlook_client_secret'  => 'IM_OUTLOOK_CLIENT_SECRET',
+			'outlook_client_id'      => 'INSANEMAILER_OUTLOOK_CLIENT_ID',
+			'outlook_client_secret'  => 'INSANEMAILER_OUTLOOK_CLIENT_SECRET',
 			// Custom SMTP
-			'smtp_username'          => 'IM_SMTP_USERNAME',
-			'smtp_password'          => 'IM_SMTP_PASSWORD',
+			'smtp_username'          => 'INSANEMAILER_SMTP_USERNAME',
+			'smtp_password'          => 'INSANEMAILER_SMTP_PASSWORD',
 		];
 
 		foreach ( $constant_map as $field => $constant ) {
@@ -555,27 +555,27 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 
 	private function get_provider_class( $provider_name ) {
 		$providers = [
-			'ses'          => 'IM_Provider_SES',
-			'mailgun'      => 'IM_Provider_Mailgun',
-			'sendgrid'     => 'IM_Provider_SendGrid',
-			'brevo'        => 'IM_Provider_Brevo',
-			'sparkpost'    => 'IM_Provider_SparkPost',
-			'pepipost'     => 'IM_Provider_Netcore',
-			'postmark'     => 'IM_Provider_Postmark',
-			'elasticemail' => 'IM_Provider_ElasticEmail',
-			'smtpcom'      => 'IM_Provider_SmtpCom',
-			'mailjet'      => 'IM_Provider_Mailjet',
-			'resend'       => 'IM_Provider_Resend',
-			'mailersend'   => 'IM_Provider_MailerSend',
-			'mailtrap'     => 'IM_Provider_Mailtrap',
-			'loops'        => 'IM_Provider_Loops',
-			'mandrill'     => 'IM_Provider_Mandrill',
-			'smtp2go'      => 'IM_Provider_Smtp2go',
-			'socketlabs'   => 'IM_Provider_SocketLabs',
-			'zeptomail'    => 'IM_Provider_ZeptoMail',
-			'gmail'        => 'IM_Provider_Gmail',
-			'outlook'      => 'IM_Provider_Outlook',
-			'smtp'         => 'IM_Provider_SMTP',
+			'ses'          => 'INSANEMAILER_Provider_SES',
+			'mailgun'      => 'INSANEMAILER_Provider_Mailgun',
+			'sendgrid'     => 'INSANEMAILER_Provider_SendGrid',
+			'brevo'        => 'INSANEMAILER_Provider_Brevo',
+			'sparkpost'    => 'INSANEMAILER_Provider_SparkPost',
+			'pepipost'     => 'INSANEMAILER_Provider_Netcore',
+			'postmark'     => 'INSANEMAILER_Provider_Postmark',
+			'elasticemail' => 'INSANEMAILER_Provider_ElasticEmail',
+			'smtpcom'      => 'INSANEMAILER_Provider_SmtpCom',
+			'mailjet'      => 'INSANEMAILER_Provider_Mailjet',
+			'resend'       => 'INSANEMAILER_Provider_Resend',
+			'mailersend'   => 'INSANEMAILER_Provider_MailerSend',
+			'mailtrap'     => 'INSANEMAILER_Provider_Mailtrap',
+			'loops'        => 'INSANEMAILER_Provider_Loops',
+			'mandrill'     => 'INSANEMAILER_Provider_Mandrill',
+			'smtp2go'      => 'INSANEMAILER_Provider_Smtp2go',
+			'socketlabs'   => 'INSANEMAILER_Provider_SocketLabs',
+			'zeptomail'    => 'INSANEMAILER_Provider_ZeptoMail',
+			'gmail'        => 'INSANEMAILER_Provider_Gmail',
+			'outlook'      => 'INSANEMAILER_Provider_Outlook',
+			'smtp'         => 'INSANEMAILER_Provider_SMTP',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -583,7 +583,7 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 		}
 
 		$class_name = $providers[ $provider_name ];
-		$file_path  = IM_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'IM_Provider_', '', $class_name ) . '.php';
+		$file_path  = INSANEMAILER_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'INSANEMAILER_Provider_', '', $class_name ) . '.php';
 
 		if ( file_exists( $file_path ) ) {
 			require_once $file_path;
@@ -593,12 +593,12 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 	}
 
 	public function export_settings( $request ) {
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		return $this->success_response( [
 			'settings' => $settings,
 			'exported' => gmdate( 'Y-m-d H:i:s' ),
-			'version'  => IM_VERSION,
+			'version'  => INSANEMAILER_VERSION,
 		] );
 	}
 
@@ -643,11 +643,11 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			return $this->error_response( 'No valid settings found in import data' );
 		}
 
-		$current = get_option( 'im_settings', [] );
+		$current = get_option( 'insanemailer_settings', [] );
 		$merged  = array_merge( $current, $sanitized );
 
-		update_option( 'im_settings', $merged );
-		delete_transient( 'im_connection_status' );
+		update_option( 'insanemailer_settings', $merged );
+		delete_transient( 'insanemailer_connection_status' );
 
 		return $this->success_response( [
 			'message'  => 'Settings imported successfully',
@@ -677,8 +677,8 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 			'priority_express'   => false,
 		];
 
-		update_option( 'im_settings', $defaults );
-		delete_transient( 'im_connection_status' );
+		update_option( 'insanemailer_settings', $defaults );
+		delete_transient( 'insanemailer_connection_status' );
 
 		return $this->success_response( [
 			'message'  => 'Settings reset to defaults',
@@ -689,53 +689,53 @@ class IM_Rest_Settings_Controller extends IM_Rest_Controller {
 	public function check_constants( $request ) {
 		$constant_map = [
 			// SES
-			'ses_access_key'         => 'IM_SES_ACCESS_KEY',
-			'ses_secret_key'         => 'IM_SES_SECRET_KEY',
+			'ses_access_key'         => 'INSANEMAILER_SES_ACCESS_KEY',
+			'ses_secret_key'         => 'INSANEMAILER_SES_SECRET_KEY',
 			// SendGrid
-			'sendgrid_api_key'       => 'IM_SENDGRID_API_KEY',
+			'sendgrid_api_key'       => 'INSANEMAILER_SENDGRID_API_KEY',
 			// Mailgun
-			'mailgun_api_key'        => 'IM_MAILGUN_API_KEY',
+			'mailgun_api_key'        => 'INSANEMAILER_MAILGUN_API_KEY',
 			// Postmark
-			'postmark_server_token'  => 'IM_POSTMARK_TOKEN',
+			'postmark_server_token'  => 'INSANEMAILER_POSTMARK_TOKEN',
 			// Brevo
-			'brevo_api_key'          => 'IM_BREVO_API_KEY',
+			'brevo_api_key'          => 'INSANEMAILER_BREVO_API_KEY',
 			// SparkPost
-			'sparkpost_api_key'      => 'IM_SPARKPOST_API_KEY',
+			'sparkpost_api_key'      => 'INSANEMAILER_SPARKPOST_API_KEY',
 			// Mailjet
-			'mailjet_api_key'        => 'IM_MAILJET_API_KEY',
-			'mailjet_secret_key'     => 'IM_MAILJET_SECRET_KEY',
+			'mailjet_api_key'        => 'INSANEMAILER_MAILJET_API_KEY',
+			'mailjet_secret_key'     => 'INSANEMAILER_MAILJET_SECRET_KEY',
 			// Elastic Email
-			'elasticemail_api_key'   => 'IM_ELASTICEMAIL_API_KEY',
+			'elasticemail_api_key'   => 'INSANEMAILER_ELASTICEMAIL_API_KEY',
 			// SMTP.com
-			'smtpcom_api_key'        => 'IM_SMTPCOM_API_KEY',
+			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
-			'pepipost_api_key'       => 'IM_PEPIPOST_API_KEY',
+			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
 			// Resend
-			'resend_api_key'         => 'IM_RESEND_API_KEY',
+			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend
-			'mailersend_api_key'     => 'IM_MAILERSEND_API_KEY',
+			'mailersend_api_key'     => 'INSANEMAILER_MAILERSEND_API_KEY',
 			// Mailtrap
-			'mailtrap_api_key'       => 'IM_MAILTRAP_API_KEY',
+			'mailtrap_api_key'       => 'INSANEMAILER_MAILTRAP_API_KEY',
 			// Loops
-			'loops_api_key'          => 'IM_LOOPS_API_KEY',
+			'loops_api_key'          => 'INSANEMAILER_LOOPS_API_KEY',
 			// Mandrill
-			'mandrill_api_key'       => 'IM_MANDRILL_API_KEY',
+			'mandrill_api_key'       => 'INSANEMAILER_MANDRILL_API_KEY',
 			// SMTP2GO
-			'smtp2go_api_key'        => 'IM_SMTP2GO_API_KEY',
+			'smtp2go_api_key'        => 'INSANEMAILER_SMTP2GO_API_KEY',
 			// SocketLabs
-			'socketlabs_server_id'   => 'IM_SOCKETLABS_SERVER_ID',
-			'socketlabs_api_key'     => 'IM_SOCKETLABS_API_KEY',
+			'socketlabs_server_id'   => 'INSANEMAILER_SOCKETLABS_SERVER_ID',
+			'socketlabs_api_key'     => 'INSANEMAILER_SOCKETLABS_API_KEY',
 			// ZeptoMail
-			'zeptomail_api_key'      => 'IM_ZEPTOMAIL_TOKEN',
+			'zeptomail_api_key'      => 'INSANEMAILER_ZEPTOMAIL_TOKEN',
 			// Gmail
-			'gmail_client_id'        => 'IM_GMAIL_CLIENT_ID',
-			'gmail_client_secret'    => 'IM_GMAIL_CLIENT_SECRET',
+			'gmail_client_id'        => 'INSANEMAILER_GMAIL_CLIENT_ID',
+			'gmail_client_secret'    => 'INSANEMAILER_GMAIL_CLIENT_SECRET',
 			// Outlook
-			'outlook_client_id'      => 'IM_OUTLOOK_CLIENT_ID',
-			'outlook_client_secret'  => 'IM_OUTLOOK_CLIENT_SECRET',
+			'outlook_client_id'      => 'INSANEMAILER_OUTLOOK_CLIENT_ID',
+			'outlook_client_secret'  => 'INSANEMAILER_OUTLOOK_CLIENT_SECRET',
 			// Custom SMTP
-			'smtp_username'          => 'IM_SMTP_USERNAME',
-			'smtp_password'          => 'IM_SMTP_PASSWORD',
+			'smtp_username'          => 'INSANEMAILER_SMTP_USERNAME',
+			'smtp_password'          => 'INSANEMAILER_SMTP_PASSWORD',
 		];
 
 		$defined = [];

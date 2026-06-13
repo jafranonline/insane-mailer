@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Migration_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Migration_Controller extends INSANEMAILER_Rest_Controller {
 
 	/**
 	 * Available migrators.
@@ -53,10 +53,10 @@ class IM_Rest_Migration_Controller extends IM_Rest_Controller {
 		];
 
 		foreach ( $migrator_files as $file ) {
-			$path = IM_PLUGIN_DIR . 'includes/Migration/' . $file . '.php';
+			$path = INSANEMAILER_PLUGIN_DIR . 'includes/Migration/' . $file . '.php';
 			if ( file_exists( $path ) ) {
 				require_once $path;
-				$class_name = 'IM_' . $file;
+				$class_name = 'INSANEMAILER_' . $file;
 				if ( class_exists( $class_name ) ) {
 					$this->migrators[] = new $class_name();
 				}
@@ -215,7 +215,7 @@ class IM_Rest_Migration_Controller extends IM_Rest_Controller {
 		}
 
 		// Merge with existing settings to preserve non-migrated fields
-		$current_settings = get_option( 'im_settings', [] );
+		$current_settings = get_option( 'insanemailer_settings', [] );
 		$merged_settings = array_merge( $current_settings, $new_settings );
 
 		// Preserve queue/advanced settings that shouldn't be overwritten
@@ -237,7 +237,7 @@ class IM_Rest_Migration_Controller extends IM_Rest_Controller {
 			}
 		}
 
-		update_option( 'im_settings', $merged_settings );
+		update_option( 'insanemailer_settings', $merged_settings );
 
 		return $this->success_response( [
 			'message'  => sprintf( 'Settings imported from %s', $migrator->get_name() ),
@@ -291,9 +291,9 @@ class IM_Rest_Migration_Controller extends IM_Rest_Controller {
 	 * Get migrator by slug.
 	 *
 	 * @param string $slug Migrator slug.
-	 * @return IM_Migrator_Interface|null
+	 * @return INSANEMAILER_Migrator_Interface|null
 	 */
-	private function get_migrator_by_slug( string $slug ): ?IM_Migrator_Interface {
+	private function get_migrator_by_slug( string $slug ): ?INSANEMAILER_Migrator_Interface {
 		foreach ( $this->migrators as $migrator ) {
 			if ( $migrator->get_slug() === $slug ) {
 				return $migrator;

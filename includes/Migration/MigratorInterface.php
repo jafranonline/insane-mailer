@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-interface IM_Migrator_Interface {
+interface INSANEMAILER_Migrator_Interface {
 
 	/**
 	 * Check if the source plugin settings exist and can be migrated.
@@ -16,7 +16,7 @@ interface IM_Migrator_Interface {
 	/**
 	 * Get the mapped settings in Insane Mailer format.
 	 *
-	 * @return array Settings array compatible with im_settings option.
+	 * @return array Settings array compatible with insanemailer_settings option.
 	 */
 	public function get_settings(): array;
 

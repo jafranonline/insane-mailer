@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Queue {
+class INSANEMAILER_Queue {
 
 	private static $instance = null;
 	private $settings;
@@ -18,7 +18,7 @@ class IM_Queue {
 	}
 
 	private function __construct() {
-		$this->settings = get_option( 'im_settings', [] );
+		$this->settings = get_option( 'insanemailer_settings', [] );
 	}
 
 	public function process() {
@@ -32,7 +32,7 @@ class IM_Queue {
 
 		$this->is_processing = true;
 
-		$bulk_limit = apply_filters( 'im_bulk_limit', $this->settings['bulk_limit'] ?? 50 );
+		$bulk_limit = apply_filters( 'insanemailer_bulk_limit', $this->settings['bulk_limit'] ?? 50 );
 		$emails     = $this->get_pending_emails( $bulk_limit );
 
 		foreach ( $emails as $email ) {
@@ -42,28 +42,28 @@ class IM_Queue {
 		$this->release_lock();
 		$this->is_processing = false;
 
-		do_action( 'im_queue_processed', count( $emails ) );
+		do_action( 'insanemailer_queue_processed', count( $emails ) );
 	}
 
 	private function acquire_lock() {
-		$lock = get_transient( 'im_queue_lock' );
+		$lock = get_transient( 'insanemailer_queue_lock' );
 
 		if ( $lock ) {
 			return false;
 		}
 
-		set_transient( 'im_queue_lock', time(), 5 * MINUTE_IN_SECONDS );
+		set_transient( 'insanemailer_queue_lock', time(), 5 * MINUTE_IN_SECONDS );
 		return true;
 	}
 
 	private function release_lock() {
-		delete_transient( 'im_queue_lock' );
+		delete_transient( 'insanemailer_queue_lock' );
 	}
 
 	private function get_pending_emails( $limit ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 		$now        = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, queue processing needs fresh data.
@@ -87,7 +87,7 @@ class IM_Queue {
 
 		$this->apply_rate_limit();
 
-		do_action( 'im_before_send', $email );
+		do_action( 'insanemailer_before_send', $email );
 
 		$result = $this->send_email( $email );
 
@@ -191,14 +191,14 @@ class IM_Queue {
 		$attachments     = $attachment_data ? $attachment_data : [];
 
 		// Temporarily remove our hooks to prevent infinite loop
-		remove_filter( 'pre_wp_mail', [ IM_Mailer::instance(), 'maybe_queue_mail' ], 10 );
-		remove_action( 'phpmailer_init', [ IM_Mailer::instance(), 'intercept_phpmailer' ], 999 );
+		remove_filter( 'pre_wp_mail', [ INSANEMAILER_Mailer::instance(), 'maybe_queue_mail' ], 10 );
+		remove_action( 'phpmailer_init', [ INSANEMAILER_Mailer::instance(), 'intercept_phpmailer' ], 999 );
 
 		$sent = wp_mail( $to, $email->subject, $body, $headers, $attachments );
 
 		// Re-add our hooks
-		add_filter( 'pre_wp_mail', [ IM_Mailer::instance(), 'maybe_queue_mail' ], 10, 2 );
-		add_action( 'phpmailer_init', [ IM_Mailer::instance(), 'intercept_phpmailer' ], 999 );
+		add_filter( 'pre_wp_mail', [ INSANEMAILER_Mailer::instance(), 'maybe_queue_mail' ], 10, 2 );
+		add_action( 'phpmailer_init', [ INSANEMAILER_Mailer::instance(), 'intercept_phpmailer' ], 999 );
 
 		if ( $sent ) {
 			return [
@@ -222,27 +222,27 @@ class IM_Queue {
 
 	private function get_provider_class( $provider_name ) {
 		$providers = [
-			'ses'          => 'IM_Provider_SES',
-			'mailgun'      => 'IM_Provider_Mailgun',
-			'sendgrid'     => 'IM_Provider_SendGrid',
-			'brevo'        => 'IM_Provider_Brevo',
-			'sparkpost'    => 'IM_Provider_SparkPost',
-			'netcore'      => 'IM_Provider_Netcore',
-			'postmark'     => 'IM_Provider_Postmark',
-			'elasticemail' => 'IM_Provider_ElasticEmail',
-			'smtpcom'      => 'IM_Provider_SmtpCom',
-			'smtp'         => 'IM_Provider_SMTP',
-			'gmail'        => 'IM_Provider_Gmail',
-			'outlook'      => 'IM_Provider_Outlook',
-			'socketlabs'   => 'IM_Provider_SocketLabs',
-			'mandrill'     => 'IM_Provider_Mandrill',
-			'smtp2go'      => 'IM_Provider_Smtp2go',
-			'mailtrap'     => 'IM_Provider_Mailtrap',
-			'mailjet'      => 'IM_Provider_Mailjet',
-			'zeptomail'    => 'IM_Provider_ZeptoMail',
-			'mailersend'   => 'IM_Provider_MailerSend',
-			'loops'        => 'IM_Provider_Loops',
-			'resend'       => 'IM_Provider_Resend',
+			'ses'          => 'INSANEMAILER_Provider_SES',
+			'mailgun'      => 'INSANEMAILER_Provider_Mailgun',
+			'sendgrid'     => 'INSANEMAILER_Provider_SendGrid',
+			'brevo'        => 'INSANEMAILER_Provider_Brevo',
+			'sparkpost'    => 'INSANEMAILER_Provider_SparkPost',
+			'netcore'      => 'INSANEMAILER_Provider_Netcore',
+			'postmark'     => 'INSANEMAILER_Provider_Postmark',
+			'elasticemail' => 'INSANEMAILER_Provider_ElasticEmail',
+			'smtpcom'      => 'INSANEMAILER_Provider_SmtpCom',
+			'smtp'         => 'INSANEMAILER_Provider_SMTP',
+			'gmail'        => 'INSANEMAILER_Provider_Gmail',
+			'outlook'      => 'INSANEMAILER_Provider_Outlook',
+			'socketlabs'   => 'INSANEMAILER_Provider_SocketLabs',
+			'mandrill'     => 'INSANEMAILER_Provider_Mandrill',
+			'smtp2go'      => 'INSANEMAILER_Provider_Smtp2go',
+			'mailtrap'     => 'INSANEMAILER_Provider_Mailtrap',
+			'mailjet'      => 'INSANEMAILER_Provider_Mailjet',
+			'zeptomail'    => 'INSANEMAILER_Provider_ZeptoMail',
+			'mailersend'   => 'INSANEMAILER_Provider_MailerSend',
+			'loops'        => 'INSANEMAILER_Provider_Loops',
+			'resend'       => 'INSANEMAILER_Provider_Resend',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -250,7 +250,7 @@ class IM_Queue {
 		}
 
 		$class_name = $providers[ $provider_name ];
-		$file_path  = IM_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'IM_Provider_', '', $class_name ) . '.php';
+		$file_path  = INSANEMAILER_PLUGIN_DIR . 'includes/Providers/' . str_replace( 'INSANEMAILER_Provider_', '', $class_name ) . '.php';
 
 		if ( file_exists( $file_path ) ) {
 			require_once $file_path;
@@ -261,7 +261,7 @@ class IM_Queue {
 
 	private function update_status( $email_id, $status ) {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
@@ -275,12 +275,12 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 	}
 
 	private function mark_sent( $email_id, $result ) {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
@@ -297,14 +297,14 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
-		do_action( 'im_email_sent', $email_id, $result );
+		do_action( 'insanemailer_email_sent', $email_id, $result );
 	}
 
 	private function mark_failed( $email, $result ) {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$attempts = $email->attempts + 1;
 		$status   = $attempts >= $email->max_attempts ? 'failed' : 'pending';
@@ -330,15 +330,15 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( 'failed' === $status ) {
-			do_action( 'im_email_failed', $email->id, $result['error'] ?? 'Unknown error' );
+			do_action( 'insanemailer_email_failed', $email->id, $result['error'] ?? 'Unknown error' );
 		}
 	}
 
 	private function apply_rate_limit() {
-		$rate_limit = apply_filters( 'im_rate_limit', $this->settings['rate_limit'] ?? 14 );
+		$rate_limit = apply_filters( 'insanemailer_rate_limit', $this->settings['rate_limit'] ?? 14 );
 
 		if ( $rate_limit > 0 ) {
 			$delay = (int) ( 1000000 / $rate_limit );
@@ -348,7 +348,7 @@ class IM_Queue {
 
 	public function retry_email( $email_id ) {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single row lookup.
 		$email = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id ) );
@@ -371,18 +371,18 @@ class IM_Queue {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		return true;
 	}
 
 	public function get_stats() {
-		$cache_key = 'im_queue_stats';
+		$cache_key = 'insanemailer_queue_stats';
 		$stats_result = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $stats_result ) {
 			global $wpdb;
-			$table_name = $wpdb->prefix . 'im_emails';
+			$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
 			$stats_result = $wpdb->get_results(

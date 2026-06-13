@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_RateLimiter {
+class INSANEMAILER_RateLimiter {
 
 	private $rate_limit;
 	private $last_send_time = 0;

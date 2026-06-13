@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/AbstractMigrator.php';
 
-class IM_WpMailSmtpMigrator extends IM_Abstract_Migrator {
+class INSANEMAILER_WpMailSmtpMigrator extends INSANEMAILER_Abstract_Migrator {
 
 	protected string $option_name = 'wp_mail_smtp';
 

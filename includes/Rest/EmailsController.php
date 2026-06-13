@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Emails_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 
 	public function register_routes() {
 		register_rest_route(
@@ -103,7 +103,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 	public function get_emails( $request ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$page      = $request->get_param( 'page' ) ?? 1;
 		$per_page  = $request->get_param( 'per_page' ) ?? 20;
@@ -167,7 +167,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		global $wpdb;
 
 		$email_id   = $request->get_param( 'id' );
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
@@ -184,7 +184,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 	public function retry_email( $request ) {
 		$email_id = $request->get_param( 'id' );
 
-		$result = IM_Queue::instance()->retry_email( $email_id );
+		$result = INSANEMAILER_Queue::instance()->retry_email( $email_id );
 
 		if ( $result ) {
 			return $this->success_response(
@@ -202,7 +202,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		global $wpdb;
 
 		$email_id   = $request->get_param( 'id' );
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
@@ -226,7 +226,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( false !== $updated ) {
 			return $this->success_response(
@@ -244,7 +244,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		global $wpdb;
 
 		$email_id   = $request->get_param( 'id' );
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
@@ -268,7 +268,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( false !== $updated ) {
 			return $this->success_response(
@@ -286,7 +286,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		global $wpdb;
 
 		$email_id   = $request->get_param( 'id' );
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
 		$email = $wpdb->get_row(
@@ -306,7 +306,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			[ '%d' ]
 		);
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( $deleted ) {
 			return $this->success_response(
@@ -323,7 +323,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 	public function clear_logs( $request ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$emails = $wpdb->get_results( $wpdb->prepare( 'SELECT id FROM %i', $table_name ) );
@@ -335,7 +335,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$deleted = $wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $table_name ) );
 
-		wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 
 		if ( false !== $deleted ) {
 			return $this->success_response(
@@ -351,7 +351,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 	public function export_csv( $request ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$status = $request->get_param( 'status' ) ?? '';
 
@@ -370,7 +370,7 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 		$emails = $wpdb->get_results( $query, ARRAY_A );
 
 		header( 'Content-Type: text/csv' );
-		header( 'Content-Disposition: attachment; filename="im-emails-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="insanemailer-emails-' . gmdate( 'Y-m-d' ) . '.csv"' );
 
 		$output = fopen( 'php://output', 'w' );
 
@@ -388,17 +388,17 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 	}
 
 	public function get_stats( $request ) {
-		$stats = IM_Queue::instance()->get_stats();
+		$stats = INSANEMAILER_Queue::instance()->get_stats();
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, recent emails not cacheable.
 		$recent_emails = $wpdb->get_results(
 			$wpdb->prepare( 'SELECT * FROM %i ORDER BY created_at DESC LIMIT 10', $table_name )
 		);
 
-		$cache_key   = 'im_daily_stats_30';
+		$cache_key   = 'insanemailer_daily_stats_30';
 		$daily_stats = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $daily_stats ) {
@@ -420,13 +420,13 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 
 	private function delete_email_attachments( $email_id ) {
 		$upload_dir = wp_upload_dir();
-		$im_dir    = $upload_dir['basedir'] . '/im-attachments/' . $email_id;
+		$insanemailer_dir    = $upload_dir['basedir'] . '/insanemailer-attachments/' . $email_id;
 
-		if ( ! file_exists( $im_dir ) ) {
+		if ( ! file_exists( $insanemailer_dir ) ) {
 			return;
 		}
 
-		$files = glob( $im_dir . '/*' );
+		$files = glob( $insanemailer_dir . '/*' );
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
 				wp_delete_file( $file );
@@ -438,6 +438,6 @@ class IM_Rest_Emails_Controller extends IM_Rest_Controller {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			WP_Filesystem();
 		}
-		$wp_filesystem->rmdir( $im_dir );
+		$wp_filesystem->rmdir( $insanemailer_dir );
 	}
 }

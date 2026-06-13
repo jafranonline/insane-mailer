@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Providers/AbstractProvider.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Providers/AbstractProvider.php';
 
-class IM_Provider_Outlook extends IM_Abstract_Provider {
+class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 
 	public function get_name() {
 		return 'Outlook';
@@ -132,12 +132,12 @@ class IM_Provider_Outlook extends IM_Abstract_Provider {
 
 		if ( $result['success'] && isset( $result['response']['access_token'] ) ) {
 			// Update the stored access token
-			$settings                                        = get_option( 'im_settings', [] );
+			$settings                                        = get_option( 'insanemailer_settings', [] );
 			$settings['credentials']['outlook_access_token'] = $result['response']['access_token'];
 			if ( isset( $result['response']['refresh_token'] ) ) {
 				$settings['credentials']['outlook_refresh_token'] = $result['response']['refresh_token'];
 			}
-			update_option( 'im_settings', $settings );
+			update_option( 'insanemailer_settings', $settings );
 
 			$this->credentials['outlook_access_token'] = $result['response']['access_token'];
 

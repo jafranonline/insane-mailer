@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Webhook_Controller extends INSANEMAILER_Rest_Controller {
 
 	public function register_routes() {
 		register_rest_route(
@@ -15,6 +15,14 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'handle_webhook' ],
+				/*
+				 * Intentionally public. This endpoint receives unauthenticated
+				 * bounce/complaint notifications POSTed by external email
+				 * providers (Amazon SES, SendGrid, Mailgun, Postmark, SparkPost,
+				 * etc.), which cannot present a WordPress user or nonce. It only
+				 * updates the delivery status of an email already in the log by
+				 * provider message ID and performs no other privileged action.
+				 */
 				'permission_callback' => '__return_true',
 			]
 		);
@@ -53,10 +61,10 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 			if ( 'Bounce' === $event_type ) {
 				$this->update_email_status( $message_id, 'bounced' );
-				do_action( 'im_email_bounce', $message_id, $message );
+				do_action( 'insanemailer_email_bounce', $message_id, $message );
 			} elseif ( 'Complaint' === $event_type ) {
 				$this->update_email_status( $message_id, 'complained' );
-				do_action( 'im_email_complaint', $message_id, $message );
+				do_action( 'insanemailer_email_complaint', $message_id, $message );
 			}
 		}
 
@@ -71,10 +79,10 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 		if ( 'failed' === $event || 'bounced' === $event ) {
 			$this->update_email_status( $message_id, 'bounced' );
-			do_action( 'im_email_bounce', $message_id, $event_data );
+			do_action( 'insanemailer_email_bounce', $message_id, $event_data );
 		} elseif ( 'complained' === $event ) {
 			$this->update_email_status( $message_id, 'complained' );
-			do_action( 'im_email_complaint', $message_id, $event_data );
+			do_action( 'insanemailer_email_complaint', $message_id, $event_data );
 		}
 
 		return $this->success_response( [ 'message' => 'Webhook processed' ] );
@@ -87,10 +95,10 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 			if ( 'bounce' === $event_type || 'dropped' === $event_type ) {
 				$this->update_email_status( $message_id, 'bounced' );
-				do_action( 'im_email_bounce', $message_id, $event );
+				do_action( 'insanemailer_email_bounce', $message_id, $event );
 			} elseif ( 'spamreport' === $event_type ) {
 				$this->update_email_status( $message_id, 'complained' );
-				do_action( 'im_email_complaint', $message_id, $event );
+				do_action( 'insanemailer_email_complaint', $message_id, $event );
 			}
 		}
 
@@ -103,10 +111,10 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 		if ( 'Bounce' === $record_type ) {
 			$this->update_email_status( $message_id, 'bounced' );
-			do_action( 'im_email_bounce', $message_id, $params );
+			do_action( 'insanemailer_email_bounce', $message_id, $params );
 		} elseif ( 'SpamComplaint' === $record_type ) {
 			$this->update_email_status( $message_id, 'complained' );
-			do_action( 'im_email_complaint', $message_id, $params );
+			do_action( 'insanemailer_email_complaint', $message_id, $params );
 		}
 
 		return $this->success_response( [ 'message' => 'Webhook processed' ] );
@@ -122,10 +130,10 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 
 			if ( in_array( $event_type, [ 'bounce', 'out_of_band', 'policy_rejection' ], true ) ) {
 				$this->update_email_status( $message_id, 'bounced' );
-				do_action( 'im_email_bounce', $message_id, $message_event );
+				do_action( 'insanemailer_email_bounce', $message_id, $message_event );
 			} elseif ( 'spam_complaint' === $event_type ) {
 				$this->update_email_status( $message_id, 'complained' );
-				do_action( 'im_email_complaint', $message_id, $message_event );
+				do_action( 'insanemailer_email_complaint', $message_id, $message_event );
 			}
 		}
 
@@ -138,7 +146,7 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 		}
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
 		$message_id = trim( $message_id, '<>' );
 
@@ -155,7 +163,7 @@ class IM_Rest_Webhook_Controller extends IM_Rest_Controller {
 		);
 
 		if ( $updated ) {
-			wp_cache_delete( 'im_queue_stats', 'insane_mailer' );
+			wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 		}
 	}
 }

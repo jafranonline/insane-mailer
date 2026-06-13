@@ -202,7 +202,7 @@ const debugInfo = [
   {
     title: 'Enable Debug Mode',
     content: 'Add the following to wp-config.php to enable detailed logging:',
-    code: "define('IM_DEBUG', true);",
+    code: "define('INSANEMAILER_DEBUG', true);",
   },
   {
     title: 'Check Email Logs',

@@ -4,9 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once IM_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
 
-class IM_Rest_Queue_Controller extends IM_Rest_Controller {
+class INSANEMAILER_Rest_Queue_Controller extends INSANEMAILER_Rest_Controller {
 
 	public function register_routes() {
 		register_rest_route(
@@ -47,9 +47,9 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 	}
 
 	public function process_queue( $request ) {
-		IM_Queue::instance()->process();
+		INSANEMAILER_Queue::instance()->process();
 
-		$stats = IM_Queue::instance()->get_stats();
+		$stats = INSANEMAILER_Queue::instance()->get_stats();
 
 		return $this->success_response(
 			[
@@ -60,12 +60,12 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 	}
 
 	public function get_queue_status( $request ) {
-		$stats = IM_Queue::instance()->get_stats();
+		$stats = INSANEMAILER_Queue::instance()->get_stats();
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'im_emails';
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
-		$cache_key   = 'im_queue_status';
+		$cache_key   = 'insanemailer_queue_status';
 		$cached_data = wp_cache_get( $cache_key, 'insane_mailer' );
 
 		if ( false === $cached_data ) {
@@ -90,7 +90,7 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 			wp_cache_set( $cache_key, $cached_data, 'insane_mailer', 30 );
 		}
 
-		$is_locked = get_transient( 'im_queue_lock' );
+		$is_locked = get_transient( 'insanemailer_queue_lock' );
 
 		return $this->success_response(
 			[
@@ -104,7 +104,7 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 
 	public function external_cron( $request ) {
 		$token    = $request->get_param( 'token' );
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		$valid_token = $settings['cron_token'] ?? '';
 
@@ -112,9 +112,9 @@ class IM_Rest_Queue_Controller extends IM_Rest_Controller {
 			return $this->error_response( 'Invalid token', 401 );
 		}
 
-		IM_Queue::instance()->process();
+		INSANEMAILER_Queue::instance()->process();
 
-		$stats = IM_Queue::instance()->get_stats();
+		$stats = INSANEMAILER_Queue::instance()->get_stats();
 
 		return $this->success_response(
 			[

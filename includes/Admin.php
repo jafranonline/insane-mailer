@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class IM_Admin {
+class INSANEMAILER_Admin {
 
 	private static $instance = null;
 
@@ -32,7 +32,7 @@ class IM_Admin {
 			return;
 		}
 
-		$settings = get_option( 'im_settings', [] );
+		$settings = get_option( 'insanemailer_settings', [] );
 
 		if ( empty( $settings['pause_sending'] ) ) {
 			return;
@@ -69,27 +69,27 @@ class IM_Admin {
 			return;
 		}
 
-		$js_file  = IM_PLUGIN_DIR . 'assets/script.js';
-		$css_file = IM_PLUGIN_DIR . 'assets/style.css';
+		$js_file  = INSANEMAILER_PLUGIN_DIR . 'assets/script.js';
+		$css_file = INSANEMAILER_PLUGIN_DIR . 'assets/style.css';
 
 		if ( file_exists( $js_file ) ) {
 			wp_enqueue_script(
-				'im-admin',
-				IM_PLUGIN_URL . 'assets/script.js',
+				'insanemailer-admin',
+				INSANEMAILER_PLUGIN_URL . 'assets/script.js',
 				[],
 				filemtime( $js_file ),
 				true
 			);
 
 			wp_localize_script(
-				'im-admin',
+				'insanemailer-admin',
 				'insaneMailerAdmin',
 				[
 					'restUrl'   => rest_url( 'insane-mailer/v1' ),
 					'nonce'     => wp_create_nonce( 'wp_rest' ),
 					'adminUrl'  => admin_url(),
 					'siteUrl'   => site_url(),
-					'pluginUrl' => IM_PLUGIN_URL,
+					'pluginUrl' => INSANEMAILER_PLUGIN_URL,
 					'settings'  => $this->get_settings_for_frontend(),
 					'constants' => $this->get_defined_constants(),
 				]
@@ -98,8 +98,8 @@ class IM_Admin {
 
 		if ( file_exists( $css_file ) ) {
 			wp_enqueue_style(
-				'im-admin',
-				IM_PLUGIN_URL . 'assets/style.css',
+				'insanemailer-admin',
+				INSANEMAILER_PLUGIN_URL . 'assets/style.css',
 				[],
 				filemtime( $css_file )
 			);
@@ -109,53 +109,53 @@ class IM_Admin {
 	private function get_defined_constants() {
 		$constant_map = [
 			// SES
-			'ses_access_key'         => 'IM_SES_ACCESS_KEY',
-			'ses_secret_key'         => 'IM_SES_SECRET_KEY',
+			'ses_access_key'         => 'INSANEMAILER_SES_ACCESS_KEY',
+			'ses_secret_key'         => 'INSANEMAILER_SES_SECRET_KEY',
 			// SendGrid
-			'sendgrid_api_key'       => 'IM_SENDGRID_API_KEY',
+			'sendgrid_api_key'       => 'INSANEMAILER_SENDGRID_API_KEY',
 			// Mailgun
-			'mailgun_api_key'        => 'IM_MAILGUN_API_KEY',
+			'mailgun_api_key'        => 'INSANEMAILER_MAILGUN_API_KEY',
 			// Postmark
-			'postmark_server_token'  => 'IM_POSTMARK_TOKEN',
+			'postmark_server_token'  => 'INSANEMAILER_POSTMARK_TOKEN',
 			// Brevo
-			'brevo_api_key'          => 'IM_BREVO_API_KEY',
+			'brevo_api_key'          => 'INSANEMAILER_BREVO_API_KEY',
 			// SparkPost
-			'sparkpost_api_key'      => 'IM_SPARKPOST_API_KEY',
+			'sparkpost_api_key'      => 'INSANEMAILER_SPARKPOST_API_KEY',
 			// Mailjet
-			'mailjet_api_key'        => 'IM_MAILJET_API_KEY',
-			'mailjet_secret_key'     => 'IM_MAILJET_SECRET_KEY',
+			'mailjet_api_key'        => 'INSANEMAILER_MAILJET_API_KEY',
+			'mailjet_secret_key'     => 'INSANEMAILER_MAILJET_SECRET_KEY',
 			// Elastic Email
-			'elasticemail_api_key'   => 'IM_ELASTICEMAIL_API_KEY',
+			'elasticemail_api_key'   => 'INSANEMAILER_ELASTICEMAIL_API_KEY',
 			// SMTP.com
-			'smtpcom_api_key'        => 'IM_SMTPCOM_API_KEY',
+			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
-			'pepipost_api_key'       => 'IM_PEPIPOST_API_KEY',
+			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
 			// Resend
-			'resend_api_key'         => 'IM_RESEND_API_KEY',
+			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend
-			'mailersend_api_key'     => 'IM_MAILERSEND_API_KEY',
+			'mailersend_api_key'     => 'INSANEMAILER_MAILERSEND_API_KEY',
 			// Mailtrap
-			'mailtrap_api_key'       => 'IM_MAILTRAP_API_KEY',
+			'mailtrap_api_key'       => 'INSANEMAILER_MAILTRAP_API_KEY',
 			// Loops
-			'loops_api_key'          => 'IM_LOOPS_API_KEY',
+			'loops_api_key'          => 'INSANEMAILER_LOOPS_API_KEY',
 			// Mandrill
-			'mandrill_api_key'       => 'IM_MANDRILL_API_KEY',
+			'mandrill_api_key'       => 'INSANEMAILER_MANDRILL_API_KEY',
 			// SMTP2GO
-			'smtp2go_api_key'        => 'IM_SMTP2GO_API_KEY',
+			'smtp2go_api_key'        => 'INSANEMAILER_SMTP2GO_API_KEY',
 			// SocketLabs
-			'socketlabs_server_id'   => 'IM_SOCKETLABS_SERVER_ID',
-			'socketlabs_api_key'     => 'IM_SOCKETLABS_API_KEY',
+			'socketlabs_server_id'   => 'INSANEMAILER_SOCKETLABS_SERVER_ID',
+			'socketlabs_api_key'     => 'INSANEMAILER_SOCKETLABS_API_KEY',
 			// ZeptoMail
-			'zeptomail_api_key'      => 'IM_ZEPTOMAIL_TOKEN',
+			'zeptomail_api_key'      => 'INSANEMAILER_ZEPTOMAIL_TOKEN',
 			// Gmail
-			'gmail_client_id'        => 'IM_GMAIL_CLIENT_ID',
-			'gmail_client_secret'    => 'IM_GMAIL_CLIENT_SECRET',
+			'gmail_client_id'        => 'INSANEMAILER_GMAIL_CLIENT_ID',
+			'gmail_client_secret'    => 'INSANEMAILER_GMAIL_CLIENT_SECRET',
 			// Outlook
-			'outlook_client_id'      => 'IM_OUTLOOK_CLIENT_ID',
-			'outlook_client_secret'  => 'IM_OUTLOOK_CLIENT_SECRET',
+			'outlook_client_id'      => 'INSANEMAILER_OUTLOOK_CLIENT_ID',
+			'outlook_client_secret'  => 'INSANEMAILER_OUTLOOK_CLIENT_SECRET',
 			// Custom SMTP
-			'smtp_username'          => 'IM_SMTP_USERNAME',
-			'smtp_password'          => 'IM_SMTP_PASSWORD',
+			'smtp_username'          => 'INSANEMAILER_SMTP_USERNAME',
+			'smtp_password'          => 'INSANEMAILER_SMTP_PASSWORD',
 		];
 
 		$defined = [];
@@ -187,7 +187,7 @@ class IM_Admin {
 			'setup_completed'  => false,
 		];
 
-		$settings = get_option( 'im_settings', $default_settings );
+		$settings = get_option( 'insanemailer_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
 
 		$sensitive_keys = [ 'password', 'secret_key', 'api_key', 'server_token' ];
@@ -211,8 +211,8 @@ class IM_Admin {
 		];
 
 		foreach ( $controllers as $controller ) {
-			$class_name = 'IM_Rest_' . $controller . '_Controller';
-			$file_path  = IM_PLUGIN_DIR . 'includes/Rest/' . $controller . 'Controller.php';
+			$class_name = 'INSANEMAILER_Rest_' . $controller . '_Controller';
+			$file_path  = INSANEMAILER_PLUGIN_DIR . 'includes/Rest/' . $controller . 'Controller.php';
 
 			if ( file_exists( $file_path ) ) {
 				require_once $file_path;
