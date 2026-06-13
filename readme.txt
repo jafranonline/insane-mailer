@@ -1,6 +1,6 @@
 === Insane Mailer - SMTP, Email Logs & Queue ===
 Contributors: arraystory
-Tags: smtp, email, mail, mailer, email log
+Tags: smtp, email log, email queue, mailer, transactional email
 Requires at least: 6.2
 Tested up to: 7.0
 Stable tag: 1.0.0
@@ -112,6 +112,18 @@ No. Emails are stored in your database before sending. If your site restarts or 
 
 Use a dedicated email provider like Amazon SES, SendGrid, or Mailgun. Configure SPF, DKIM, and DMARC records for your domain. Insane Mailer supports all major transactional email services.
 
+= How do I set up Gmail SMTP in WordPress? =
+
+Select Gmail as your provider in Settings > Insane Mailer, create OAuth credentials in your Google account, and paste the client ID and secret. Insane Mailer handles the token exchange so your WordPress emails send from your Gmail or Google Workspace address.
+
+= How do I use Amazon SES with WordPress? =
+
+Choose Amazon SES as your provider, enter your SES access key and secret, and select your region. Insane Mailer signs each request for you, so transactional emails go out through SES with high deliverability.
+
+= How do I send reliable WooCommerce emails? =
+
+Insane Mailer routes every WooCommerce email (orders, password resets, notifications) through your chosen SMTP or API provider instead of the default PHP mailer. Use Direct Mode for order confirmations so they send instantly, and the queue for bulk notifications.
+
 = What is the difference between queue and direct mode? =
 
 Queue mode batches emails and sends them via WP-Cron, improving deliverability and server performance. Direct mode sends immediately, ideal for urgent emails like password resets.
@@ -134,11 +146,11 @@ Yes. API keys are stored in your WordPress database and never exposed in the adm
 
 == Screenshots ==
 
-1. Dashboard overview with email statistics
-2. Provider configuration screen
-3. Email queue management
-4. Email logs with search and filters
-5. Test email interface
+1. See delivery rates, bounces, and email volume at a glance on the dashboard.
+2. Connect any of 20+ providers in a few clicks, with credentials kept out of the UI.
+3. Watch queued emails send in controlled batches without slowing your site.
+4. Search and filter a complete log of every email, with status and provider response.
+5. Send a test email and confirm your setup works before going live.
 
 == Changelog ==
 

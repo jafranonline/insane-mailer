@@ -1,0 +1,32 @@
+{
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"meta": {
+		"title": "Insane Mailer Live Preview",
+		"description": "Try the Insane Mailer SMTP, email logs, and queue dashboard."
+	},
+	"landingPage": "/wp-admin/options-general.php?page=insane-mailer",
+	"preferredVersions": {
+		"php": "8.2",
+		"wp": "latest"
+	},
+	"features": {
+		"networking": true
+	},
+	"steps": [
+		{
+			"step": "login",
+			"username": "admin",
+			"password": "password"
+		},
+		{
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "wordpress.org/plugins",
+				"slug": "insane-mailer"
+			},
+			"options": {
+				"activate": true
+			}
+		}
+	]
+}
