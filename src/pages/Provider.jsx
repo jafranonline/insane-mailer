@@ -263,7 +263,8 @@ export default function Settings() {
     const status = params.get('insanemailer_oauth');
     if (!status) return;
 
-    const message = decodeURIComponent(params.get('insanemailer_oauth_msg') || '');
+    // URLSearchParams already decodes the value.
+    const message = params.get('insanemailer_oauth_msg') || '';
     if (status === 'success') {
       toast.success(message || 'Account connected');
       try {

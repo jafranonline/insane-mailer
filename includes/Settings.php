@@ -85,6 +85,12 @@ class INSANEMAILER_Settings {
 				continue;
 			}
 
+			// Keep booleans and numbers (auth, use_config, port) as stored types.
+			if ( is_bool( $value ) || is_int( $value ) ) {
+				$clean[ $key ] = $value;
+				continue;
+			}
+
 			$clean[ $key ] = trim( preg_replace( '/[\x00-\x1F\x7F]/', '', (string) $value ) );
 		}
 

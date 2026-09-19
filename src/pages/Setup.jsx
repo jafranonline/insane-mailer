@@ -334,6 +334,13 @@ export default function Setup({ onComplete }) {
   };
 
   const handleTestConnection = async () => {
+    // Gmail and Outlook cannot be tested until the account is connected on the
+    // Sender tab, which needs the client credentials saved first.
+    if (['gmail', 'outlook'].includes(settings().provider)) {
+      setStep('sender');
+      return;
+    }
+
     setTesting(true);
     setTestError(null);
 
