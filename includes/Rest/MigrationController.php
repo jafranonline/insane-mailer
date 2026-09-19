@@ -216,7 +216,7 @@ class INSANEMAILER_Rest_Migration_Controller extends INSANEMAILER_Rest_Controlle
 
 		// Merge with existing settings to preserve non-migrated fields
 		$current_settings = get_option( 'insanemailer_settings', [] );
-		$merged_settings = array_merge( $current_settings, $new_settings );
+		$merged_settings  = array_merge( $current_settings, INSANEMAILER_Settings::sanitize( $new_settings ) );
 
 		// Preserve local settings that an import shouldn't overwrite
 		$preserve_keys = [
@@ -302,22 +302,6 @@ class INSANEMAILER_Rest_Migration_Controller extends INSANEMAILER_Rest_Controlle
 	 * @return array
 	 */
 	private function mask_credentials( array $settings ): array {
-		$sensitive_keys = [
-			'password',
-			'secret_key',
-			'api_key',
-			'server_token',
-			'client_secret',
-		];
-
-		if ( isset( $settings['credentials'] ) && is_array( $settings['credentials'] ) ) {
-			foreach ( $settings['credentials'] as $key => $value ) {
-				if ( in_array( $key, $sensitive_keys, true ) && ! empty( $value ) ) {
-					$settings['credentials'][ $key ] = str_repeat( '*', 8 );
-				}
-			}
-		}
-
-		return $settings;
+		return INSANEMAILER_Settings::mask( $settings );
 	}
 }

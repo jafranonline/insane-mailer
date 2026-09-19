@@ -2,7 +2,7 @@
 Contributors: arraystory, iamjafran
 Tags: smtp, email log, mailer, transactional email, email delivery
 Requires at least: 6.2
-Tested up to: 7.0
+Tested up to: 7.1
 Stable tag: 1.1.0
 Requires PHP: 7.4
 License: GPLv2 or later
@@ -57,16 +57,17 @@ Insane Mailer does not send your data anywhere on its own. It only contacts the 
 
 When a provider is active, the plugin contacts that provider's API (or SMTP server) in these situations:
 
-* When an email is sent. The data transmitted is the email itself: recipient and sender addresses and names, reply-to, subject, message body (HTML and/or plain text), custom headers, and any attachments.
-* When you click "Send Test Email" or "Test Connection" in the settings, a sample request is sent to verify your credentials.
+* When an email is sent. The data transmitted is the email itself: recipient and sender addresses and names, reply-to, subject, message body (HTML and/or plain text), custom headers, and any attachments. Your credentials for that provider (API key, SMTP username and password, or OAuth access token) are sent with every request to authenticate it.
+* When you save provider settings or click "Send Test Email", a connection test or a sample message is sent to verify your credentials.
+* For Gmail and Outlook, when you click "Connect" the plugin redirects you to the Google / Microsoft sign-in page (accounts.google.com, login.microsoftonline.com) and then exchanges the returned authorization code for access and refresh tokens. The tokens are stored in your WordPress database and refreshed automatically when they expire.
 
-For Gmail and Outlook, the plugin also exchanges OAuth tokens with Google / Microsoft sign-in endpoints to authorize sending. Incoming webhooks (for bounce and complaint tracking) are received from the provider only if you configure them in your provider account.
+Incoming webhooks: if you configure a webhook in your Amazon SES, Mailgun, SendGrid, Postmark or SparkPost account, that provider POSTs bounce and complaint notifications (message ID, recipient address, event type and reason) to this site's REST endpoint at /wp-json/insane-mailer/v1/webhook/[provider]. The plugin uses them only to update the delivery status of the matching entry in your email log. Each request is verified against the webhook signing key or secret you enter in the plugin settings before anything is updated. For Amazon SES, the plugin also fetches the SNS SubscribeURL (sns.[region].amazonaws.com) once to confirm the subscription.
 
 The provider you choose, and its Terms and Privacy Policy, apply to that data:
 
-* Amazon SES (api endpoint: email.[region].amazonaws.com) - Terms: https://aws.amazon.com/service-terms/ - Privacy: https://aws.amazon.com/privacy/
+* Amazon SES (email.[region].amazonaws.com API, email-smtp.[region].amazonaws.com SMTP, sns.[region].amazonaws.com webhooks) - Terms: https://aws.amazon.com/service-terms/ - Privacy: https://aws.amazon.com/privacy/
 * SendGrid (api.sendgrid.com) - Terms: https://www.twilio.com/en-us/legal/tos - Privacy: https://www.twilio.com/en-us/legal/privacy
-* Mailgun (api.mailgun.net) - Terms: https://www.mailgun.com/legal/terms/ - Privacy: https://www.mailgun.com/legal/privacy-policy/
+* Mailgun (api.mailgun.net, or api.eu.mailgun.net for EU accounts) - Terms: https://www.mailgun.com/legal/terms/ - Privacy: https://www.mailgun.com/legal/privacy-policy/
 * Postmark (api.postmarkapp.com) - Terms: https://postmarkapp.com/terms-of-service - Privacy: https://postmarkapp.com/privacy-policy
 * SparkPost (api.sparkpost.com) - Terms: https://www.sparkpost.com/policies/tou/ - Privacy: https://www.sparkpost.com/policies/privacy/
 * Brevo (api.brevo.com) - Terms: https://www.brevo.com/legal/termsofuse/ - Privacy: https://www.brevo.com/legal/privacypolicy/
@@ -78,15 +79,23 @@ The provider you choose, and its Terms and Privacy Policy, apply to that data:
 * Loops (app.loops.so) - Terms: https://loops.so/terms - Privacy: https://loops.so/privacy
 * Cloudflare Email Service (api.cloudflare.com) - Terms: https://www.cloudflare.com/terms/ - Privacy: https://www.cloudflare.com/privacypolicy/
 * SMTP.com (api.smtp.com) - Terms: https://www.smtp.com/policies/terms/ - Privacy: https://www.smtp.com/policies/privacy-policy/
-* SocketLabs (injection.socketlabs.com) - Terms: https://www.socketlabs.com/legal/tos/ - Privacy: https://www.socketlabs.com/legal/privacy/
-* Mailtrap (send.api.mailtrap.io) - Terms: https://mailtrap.io/terms/ - Privacy: https://mailtrap.io/privacy/
+* SocketLabs (inject.socketlabs.com) - Terms: https://www.socketlabs.com/legal/tos/ - Privacy: https://www.socketlabs.com/legal/privacy/
+* Mailtrap (send.api.mailtrap.io, and mailtrap.io/api for the connection test) - Terms: https://mailtrap.io/terms/ - Privacy: https://mailtrap.io/privacy/
 * Mailjet (api.mailjet.com) - Terms: https://www.mailjet.com/legal/terms/ - Privacy: https://www.mailjet.com/legal/privacy-policy/
 * ZeptoMail (api.zeptomail.com) - Terms: https://www.zoho.com/zeptomail/terms.html - Privacy: https://www.zoho.com/privacy.html
 * Netcore (emailapi.netcoresmartech.com) - Terms: https://netcorecloud.com/terms-of-service/ - Privacy: https://netcorecloud.com/privacy-policy/
-* Gmail / Google Workspace (gmail.googleapis.com, oauth2.googleapis.com) - Terms: https://policies.google.com/terms - Privacy: https://policies.google.com/privacy
+* Gmail / Google Workspace (gmail.googleapis.com, oauth2.googleapis.com, accounts.google.com) - Terms: https://policies.google.com/terms - Privacy: https://policies.google.com/privacy
 * Outlook / Microsoft 365 (graph.microsoft.com, login.microsoftonline.com) - Terms: https://www.microsoft.com/servicesagreement/ - Privacy: https://privacy.microsoft.com/privacystatement
 
 Generic SMTP and the default PHP Mail option send through the SMTP host you configure (or your own server) and do not contact any third-party service operated by us.
+
+All provider names and logos are trademarks of their respective owners and are used for identification only. Insane Mailer is not affiliated with or endorsed by any of them.
+
+== Source Code ==
+
+The admin interface shipped in `assets/script.js` and `assets/style.css` is a compiled bundle. The human-readable source (SolidJS and Tailwind CSS, built with Vite) and all build tooling are publicly available at https://github.com/jafranonline/insane-mailer in the `src/` directory.
+
+To rebuild the assets from source, run `npm install && npx vite build` in the repository root. The PHP code is shipped unminified.
 
 == Installation ==
 
@@ -128,7 +137,7 @@ Yes. The Logs screen shows every email with recipient, subject, status, provider
 
 = Does this plugin support multisite? =
 
-Yes. Activate network-wide or per-site. Each site can have its own provider configuration.
+Insane Mailer is configured per site. On a multisite network, activate it on each site that should send through its own provider; each site keeps its own settings and email log.
 
 = How do I migrate from another SMTP plugin? =
 
@@ -138,17 +147,16 @@ Insane Mailer offers to import your existing configuration during setup. We supp
 
 Yes. API keys are stored in your WordPress database and never exposed in the admin interface after saving.
 
-== Screenshots ==
-
-1. See delivery rates, bounces, and email volume at a glance on the dashboard.
-2. Connect any of 20+ providers in a few clicks, with credentials kept out of the UI.
-3. Read the setup guide for your provider without leaving the dashboard.
-4. Search and filter a complete log of every email, with status and provider response.
-5. Send a test email and confirm your setup works before going live.
-
 == Changelog ==
 
 = 1.1.0 =
+* Webhook requests from Mailgun, SendGrid, Postmark and SparkPost are now verified against a signing key or secret before the log is updated
+* Gmail and Outlook can now be connected from the settings screen; the OAuth callback that was missing is wired up
+* Settings saved through the REST API are whitelisted and sanitized, and OAuth tokens are masked like other secrets
+* Added an uninstall routine that removes the settings, email log table, transients and stored attachments
+* Added a compact connection status indicator to the header, with a flag when sender details are not set
+* Added the Plain Text Fallback toggle to Preferences
+* Browser back and forward now move between tabs
 * Removed queue mode - every email is now sent immediately through your provider
 * Removed the send mode, queue runner, external cron, batch, rate limit and retry settings
 * Emails left in the queue at upgrade are given one delivery attempt, then logged as sent or failed
@@ -156,7 +164,7 @@ Yes. API keys are stored in your WordPress database and never exposed in the adm
 * Fixed Custom SMTP credentials being ignored, so mail went out through the server's default transport
 * Fixed Pause Sending being ignored outside queue mode
 * Fixed the provider column never being recorded, so per-provider stats were always empty
-* Moved Provider into Settings, which now reads Provider / General / Tools
+* Moved Provider into Settings, which now reads Sender / Preferences / Import / Export
 * Added a warning when sender details are incomplete, which otherwise leaves WordPress sending from its default address
 
 = 1.0.0 =
@@ -181,6 +189,6 @@ Initial release of Insane Mailer.
 
 Insane Mailer stores email logs in your WordPress database including recipient addresses, subjects, and delivery status. No data is sent to external servers except to your configured email provider for delivery. See the "External services" section above for the provider endpoints contacted and links to their terms and privacy policies.
 
-You can set automatic log cleanup in Settings > Insane Mailer > Settings.
+You can set automatic log cleanup in Settings > Insane Mailer > Preferences. Individual entries, or the whole log, can be deleted from the Logs screen at any time, and the log can be exported as CSV.
 
-For GDPR compliance, email logs can be exported or deleted through the WordPress privacy tools.
+Uninstalling the plugin removes its settings, the email log table and any stored attachments.

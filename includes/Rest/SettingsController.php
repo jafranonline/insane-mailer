@@ -136,44 +136,18 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 		$settings = get_option( 'insanemailer_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
 
-		// Mask sensitive credentials
-		$sensitive_keys = [
-			'password',
-			'secret_key',
-			'api_key',
-			'server_token',
-			'ses_smtp_password',
-			'client_secret',
-			'gmail_client_secret',
-			'outlook_client_secret',
-			'cloudflare_api_token',
-		];
-
-		foreach ( $sensitive_keys as $key ) {
-			if ( isset( $settings['credentials'][ $key ] ) && ! empty( $settings['credentials'][ $key ] ) ) {
-				$settings['credentials'][ $key ] = str_repeat( '*', 8 );
-			}
-		}
-
-		return $this->success_response( $settings );
+		return $this->success_response( INSANEMAILER_Settings::mask( $settings ) );
 	}
 
 	public function update_settings( $request ) {
-		$new_settings = $request->get_json_params();
+		$new_settings = INSANEMAILER_Settings::sanitize( $request->get_json_params() );
 
 		if ( empty( $new_settings ) ) {
 			return $this->error_response( 'No settings provided' );
 		}
 
 		$current_settings = get_option( 'insanemailer_settings', [] );
-
-		if ( isset( $new_settings['credentials'] ) ) {
-			foreach ( $new_settings['credentials'] as $key => $value ) {
-				if ( str_repeat( '*', 8 ) === $value ) {
-					$new_settings['credentials'][ $key ] = $current_settings['credentials'][ $key ] ?? '';
-				}
-			}
-		}
+		$new_settings     = INSANEMAILER_Settings::restore_masked( $new_settings, $current_settings );
 
 		$provider    = $new_settings['provider'] ?? 'default';
 		$credentials = $new_settings['credentials'] ?? [];
@@ -222,7 +196,7 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 		return $this->success_response(
 			[
 				'message'          => 'Settings saved',
-				'settings'         => $new_settings,
+				'settings'         => INSANEMAILER_Settings::mask( $new_settings ),
 				'connection_valid' => true,
 			]
 		);
@@ -566,39 +540,21 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			return $this->error_response( 'Invalid settings data' );
 		}
 
-		$imported = $params['settings'];
-
-		$allowed_keys = [
-			'provider',
-			'credentials',
-			'from_email',
-			'from_name',
-			'force_from',
-			'auto_plain_text',
-			'auto_delete_days',
-			'pause_sending',
-		];
-
-		$sanitized = [];
-		foreach ( $allowed_keys as $key ) {
-			if ( isset( $imported[ $key ] ) ) {
-				$sanitized[ $key ] = $imported[ $key ];
-			}
-		}
+		$sanitized = INSANEMAILER_Settings::sanitize( $params['settings'] );
 
 		if ( empty( $sanitized ) ) {
 			return $this->error_response( 'No valid settings found in import data' );
 		}
 
 		$current = get_option( 'insanemailer_settings', [] );
-		$merged  = array_merge( $current, $sanitized );
+		$merged  = array_merge( $current, INSANEMAILER_Settings::restore_masked( $sanitized, $current ) );
 
 		update_option( 'insanemailer_settings', $merged );
 		delete_transient( 'insanemailer_connection_status' );
 
 		return $this->success_response( [
 			'message'  => 'Settings imported successfully',
-			'settings' => $merged,
+			'settings' => INSANEMAILER_Settings::mask( $merged ),
 		] );
 	}
 

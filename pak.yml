@@ -12,5 +12,8 @@ excludes:
     - phpcs.xml
     - CLAUDE.md
     - assets/*.map
+    - "*.zip"
+    - "**/.DS_Store"
+    - .DS_Store
 compression: 9
 max_file_size: 10MB

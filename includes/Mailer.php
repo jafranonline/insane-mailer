@@ -175,10 +175,8 @@ class INSANEMAILER_Mailer {
 
 		do_action( 'insanemailer_email_failed', $this->current_email_id, $error );
 
-		do_action(
-			'wp_mail_failed',
-			new WP_Error( 'wp_mail_failed', $error )
-		);
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook, fired so wp_mail() listeners still see the failure.
+		do_action( 'wp_mail_failed', new WP_Error( 'wp_mail_failed', $error ) );
 
 		return false;
 	}
@@ -580,8 +578,10 @@ class INSANEMAILER_Mailer {
 
 		// A provider send bypasses wp_mail()'s own sender pipeline, so run the core
 		// sender filters here to keep third-party overrides working.
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hooks.
 		$from_email = apply_filters( 'wp_mail_from', $from_email );
 		$from_name  = apply_filters( 'wp_mail_from_name', $from_name );
+		// phpcs:enable
 
 		$is_html    = stripos( $content_type, 'text/html' ) !== false;
 		$body_html  = $is_html ? $message : '';

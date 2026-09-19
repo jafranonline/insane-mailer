@@ -16,6 +16,31 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => [ $this, 'get_emails' ],
 				'permission_callback' => [ $this, 'permission_check' ],
+				'args'                => [
+					'page'     => [
+						'type'              => 'integer',
+						'default'           => 1,
+						'minimum'           => 1,
+						'sanitize_callback' => 'absint',
+					],
+					'per_page' => [
+						'type'              => 'integer',
+						'default'           => 20,
+						'minimum'           => 1,
+						'maximum'           => 100,
+						'sanitize_callback' => 'absint',
+					],
+					'status'   => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_key',
+					],
+					'search'   => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 
@@ -85,10 +110,10 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 
 		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
-		$page      = $request->get_param( 'page' ) ?? 1;
-		$per_page  = $request->get_param( 'per_page' ) ?? 20;
-		$status    = $request->get_param( 'status' ) ?? '';
-		$search    = $request->get_param( 'search' ) ?? '';
+		$page     = max( 1, (int) $request->get_param( 'page' ) );
+		$per_page = min( 100, max( 1, (int) $request->get_param( 'per_page' ) ) );
+		$status   = (string) $request->get_param( 'status' );
+		$search   = (string) $request->get_param( 'search' );
 
 		$offset = ( $page - 1 ) * $per_page;
 
@@ -269,7 +294,7 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 
 		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
-		$status = $request->get_param( 'status' ) ?? '';
+		$status = sanitize_key( (string) $request->get_param( 'status' ) );
 
 		$where = '1=1';
 		$args  = [ $table_name ];

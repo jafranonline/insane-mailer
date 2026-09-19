@@ -12,7 +12,6 @@
  * Domain Path: /languages
  * Requires at least: 6.2
  * Requires PHP: 7.4
- * Tested up to: 7.0
  *
  * @package InsaneMailer
  */
@@ -55,6 +54,7 @@ function insanemailer_plugin_action_links( array $links ): array {
  * Initialize plugin core functionality.
  */
 function insanemailer_init() {
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Settings.php';
 	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Mailer.php';
 	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Cleanup.php';
 	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Admin.php';

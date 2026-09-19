@@ -8,7 +8,6 @@ class INSANEMAILER_Deactivator {
 
 	public static function deactivate() {
 		self::clear_scheduled_crons();
-		flush_rewrite_rules();
 	}
 
 	private static function clear_scheduled_crons() {

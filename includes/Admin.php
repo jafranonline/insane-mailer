@@ -186,14 +186,7 @@ class INSANEMAILER_Admin {
 		$settings = get_option( 'insanemailer_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
 
-		$sensitive_keys = [ 'password', 'secret_key', 'api_key', 'server_token', 'cloudflare_api_token' ];
-		foreach ( $sensitive_keys as $key ) {
-			if ( isset( $settings['credentials'][ $key ] ) && ! empty( $settings['credentials'][ $key ] ) ) {
-				$settings['credentials'][ $key ] = str_repeat( '*', 8 );
-			}
-		}
-
-		return $settings;
+		return INSANEMAILER_Settings::mask( $settings );
 	}
 
 	public function register_rest_routes() {

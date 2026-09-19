@@ -91,8 +91,8 @@ class INSANEMAILER_Activator {
 
 		foreach ( [ 'send_mode', 'priority', 'attempts', 'max_attempts', 'scheduled_at' ] as $column ) {
 			if ( self::column_exists( $table_name, $column ) ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Column name from a fixed list.
-				$wpdb->query( "ALTER TABLE `{$table_name}` DROP COLUMN `{$column}`" );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- One-time migration on a custom table.
+				$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i DROP COLUMN %i', $table_name, $column ) );
 			}
 		}
 	}
