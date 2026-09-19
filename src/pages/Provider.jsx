@@ -314,6 +314,12 @@ export default function Settings() {
     return settings().credentials?.[key] || '';
   };
 
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
+
+  // Without a valid sender, WordPress falls back to wordpress@<host>, which many
+  // providers reject outright.
+  const missingSender = () => !isValidEmail(settings()?.from_email) || !settings()?.from_name;
+
   const hasError = () => saveError() !== null;
   const inputErrorClass = () => hasError() ? 'im:border-red-300 im:ring-1 im:ring-red-300' : 'im:border-gray-300';
 
@@ -1006,21 +1012,41 @@ export default function Settings() {
                   </svg>
                 </button>
               </Show>
-              <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4 im:mt-0">Sender Details</h4>
+              <div class="im:flex im:items-center im:gap-2 im:mb-4">
+                <h4 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-0 im:mt-0">Sender Details</h4>
+                <Show when={missingSender()}>
+                  <span class="im:px-1.5 im:py-0.5 im:text-[10px] im:font-semibold im:uppercase im:bg-red-100 im:text-red-600 im:rounded">Not set</span>
+                </Show>
+              </div>
               <div class="im:space-y-3">
                 <Show when={!editingSender()}>
                   <div>
                     <div class="im:text-xs im:text-gray-500 im:mb-0.5">From Name</div>
-                    <div class="im:text-sm im:text-gray-900">{settings().from_name || 'Not configured'}</div>
+                    <div class={`im:text-sm ${settings().from_name ? 'im:text-gray-900' : 'im:text-red-600 im:font-medium'}`}>
+                      {settings().from_name || 'Not configured'}
+                    </div>
                   </div>
                   <div>
                     <div class="im:text-xs im:text-gray-500 im:mb-0.5">From Email</div>
-                    <div class="im:text-sm im:text-gray-900">{settings().from_email || 'Not configured'}</div>
+                    <div class={`im:text-sm ${isValidEmail(settings().from_email) ? 'im:text-gray-900' : 'im:text-red-600 im:font-medium'}`}>
+                      {settings().from_email || 'Not configured'}
+                    </div>
                   </div>
                   <Show when={settings().reply_to}>
                     <div>
                       <div class="im:text-xs im:text-gray-500 im:mb-0.5">Reply-To</div>
                       <div class="im:text-sm im:text-gray-900">{settings().reply_to}</div>
+                    </div>
+                  </Show>
+                  <Show when={missingSender()}>
+                    <div class="im:flex im:items-start im:gap-2 im:p-2.5 im:bg-red-50 im:border im:border-red-200 im:rounded-md">
+                      <svg class="im:w-4 im:h-4 im:text-red-500 im:shrink-0 im:mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <p class="im:text-xs im:text-red-700 im:m-0">
+                        Set a from name and a valid from email, or WordPress falls back to its
+                        default address and many providers will reject the message.
+                      </p>
                     </div>
                   </Show>
                   <Show when={settings().force_from}>

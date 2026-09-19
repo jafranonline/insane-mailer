@@ -21,12 +21,12 @@ const providerDocs = {
   basic: {
     title: 'Basic Configuration',
     steps: [
-      'Go to Provider tab and select your email provider',
+      'Go to Settings > Provider and select your email delivery service',
       'Enter your API credentials (see provider-specific instructions)',
       'Set your From Email and From Name in Sender Details',
       'Optionally enable "Force From Address" to override all outgoing emails',
       'Click "Save Settings" and test your connection',
-      'Send a test email from the Provider tab to confirm delivery',
+      'Send a test email from Settings > Provider to confirm delivery',
     ],
     tips: [
       'Use a verified domain email address as your From Email',

@@ -132,7 +132,7 @@ Yes. Activate network-wide or per-site. Each site can have its own provider conf
 
 = How do I migrate from another SMTP plugin? =
 
-Go to Settings > Insane Mailer > Advanced and use the migration tool. We support migration from popular SMTP plugins.
+Insane Mailer offers to import your existing configuration during setup. We support migration from popular SMTP plugins.
 
 = Is my API key secure? =
 
@@ -156,6 +156,8 @@ Yes. API keys are stored in your WordPress database and never exposed in the adm
 * Fixed Custom SMTP credentials being ignored, so mail went out through the server's default transport
 * Fixed Pause Sending being ignored outside queue mode
 * Fixed the provider column never being recorded, so per-provider stats were always empty
+* Moved Provider into Settings, which now reads Provider / General / Tools
+* Added a warning when sender details are incomplete, which otherwise leaves WordPress sending from its default address
 
 = 1.0.0 =
 * Initial release

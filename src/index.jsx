@@ -2,7 +2,6 @@ import { render } from 'solid-js/web';
 import { createSignal, Show, onMount } from 'solid-js';
 import './index.css';
 import Overview from './pages/Overview';
-import Provider from './pages/Provider';
 import Advanced from './pages/Advanced';
 import Logs from './pages/Logs';
 import Docs from './pages/Docs';
@@ -14,6 +13,12 @@ function App() {
   const parseHash = () => {
     const hash = window.location.hash.slice(1);
     const [tab, subTab] = hash.split('/');
+
+    // Provider used to be a top-level tab; keep old links and bookmarks working.
+    if (tab === 'provider') {
+      return { tab: 'advanced', subTab: 'provider' };
+    }
+
     return { tab: tab || 'overview', subTab: subTab || null };
   };
 
@@ -26,6 +31,11 @@ function App() {
   const isPaused = () => settings()?.pause_sending || false;
   const needsSetup = () => !settings()?.setup_completed && settings()?.provider === 'default';
   const isDefaultMailer = () => settings()?.provider === 'default';
+
+  // Without a valid sender, WordPress falls back to wordpress@<host>, which many
+  // providers reject outright.
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
+  const missingSender = () => !isValidEmail(settings()?.from_email) || !settings()?.from_name;
 
   onMount(() => {
     if (needsSetup() && currentTab() !== 'setup') {
@@ -92,16 +102,6 @@ function App() {
               </button>
               <button
                 class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
-                  currentTab() === 'provider'
-                    ? 'im:bg-gray-100 im:text-gray-900'
-                    : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
-                }`}
-                onClick={() => switchTab('provider')}
-              >
-                Provider
-              </button>
-              <button
-                class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
                   currentTab() === 'advanced'
                     ? 'im:bg-gray-100 im:text-gray-900'
                     : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
@@ -136,6 +136,26 @@ function App() {
       </div>
 
       <Show when={currentTab() !== 'setup'}>
+        <Show when={missingSender()}>
+          <div class="im:max-w-7xl im:mx-auto im:px-8 im:pt-6">
+            <div class="im:bg-red-50 im:border im:border-red-200 im:rounded-lg im:px-4 im:py-3 im:flex im:items-center im:justify-between">
+              <div class="im:flex im:items-center im:gap-3">
+                <svg class="im:w-5 im:h-5 im:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="im:text-sm im:text-red-800">
+                  Sender details are incomplete. Emails will be sent from WordPress's default address, which many providers reject.
+                </span>
+              </div>
+              <button
+                onClick={() => switchTab('advanced', 'provider')}
+                class="im:px-3 im:py-1.5 im:bg-red-600 im:text-white im:rounded im:text-sm im:font-medium hover:im:bg-red-700 im:transition-colors im:shrink-0 im:ml-4"
+              >
+                Set Sender
+              </button>
+            </div>
+          </div>
+        </Show>
         <Show when={isDefaultMailer()}>
           <div class="im:max-w-7xl im:mx-auto im:px-8 im:pt-6">
             <div class="im:bg-amber-50 im:border im:border-amber-200 im:rounded-lg im:px-4 im:py-3 im:flex im:items-center im:justify-between">
@@ -158,7 +178,6 @@ function App() {
         </Show>
         <div class="im:max-w-7xl im:mx-auto im:px-8 im:py-12">
           {currentTab() === 'overview' && <Overview onSwitchTab={switchTab} />}
-          {currentTab() === 'provider' && <Provider />}
           {currentTab() === 'advanced' && <Advanced subTab={currentSubTab()} onSubTabChange={(sub) => switchTab('advanced', sub)} />}
           {currentTab() === 'logs' && <Logs />}
           {currentTab() === 'docs' && <Docs />}

@@ -50,6 +50,8 @@ export default function Overview(props) {
     loadAnalytics(analyticsPeriod());
   });
 
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
+
   const getProviderName = () => {
     const providers = {
       default: 'Default (PHP Mail)',
@@ -98,7 +100,7 @@ export default function Overview(props) {
         {/* Provider Configuration */}
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5 im:relative">
           <button
-            onClick={() => props.onSwitchTab('provider')}
+            onClick={() => props.onSwitchTab('advanced', 'provider')}
             class="im:absolute im:top-3 im:right-3 im:p-1.5 im:text-gray-400 hover:im:text-gray-600 im:rounded-md hover:im:bg-gray-100 im:transition-colors"
             title="Edit provider settings"
           >
@@ -115,7 +117,12 @@ export default function Overview(props) {
             <div class="im:flex im:items-center im:justify-between">
               <span class="im:text-sm im:text-gray-500">From Name</span>
               <div class="im:flex im:items-center im:gap-2">
-                <span class="im:text-sm im:font-medium im:text-gray-900">{settings().from_name || 'Not set'}</span>
+                <Show
+                  when={settings().from_name}
+                  fallback={<span class="im:px-1.5 im:py-0.5 im:text-xs im:rounded im:bg-red-50 im:text-red-600 im:border im:border-red-200">Not set</span>}
+                >
+                  <span class="im:text-sm im:font-medium im:text-gray-900">{settings().from_name}</span>
+                </Show>
                 <Show when={settings().force_from}>
                   <span class="im:px-1.5 im:py-0.5 im:text-xs im:rounded im:bg-blue-50 im:text-blue-600 im:border im:border-blue-200">forced</span>
                 </Show>
@@ -124,7 +131,12 @@ export default function Overview(props) {
             <div class="im:flex im:items-center im:justify-between">
               <span class="im:text-sm im:text-gray-500">From Email</span>
               <div class="im:flex im:items-center im:gap-2">
-                <span class="im:text-sm im:font-medium im:text-gray-900">{settings().from_email || 'Not set'}</span>
+                <Show
+                  when={isValidEmail(settings().from_email)}
+                  fallback={<span class="im:px-1.5 im:py-0.5 im:text-xs im:rounded im:bg-red-50 im:text-red-600 im:border im:border-red-200">{settings().from_email ? 'Invalid' : 'Not set'}</span>}
+                >
+                  <span class="im:text-sm im:font-medium im:text-gray-900">{settings().from_email}</span>
+                </Show>
                 <Show when={settings().force_from}>
                   <span class="im:px-1.5 im:py-0.5 im:text-xs im:rounded im:bg-blue-50 im:text-blue-600 im:border im:border-blue-200">forced</span>
                 </Show>

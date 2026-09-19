@@ -139,6 +139,27 @@ via `wp_mail_from` / `wp_mail_from_name`, because WordPress calls `setFrom()` be
 `phpmailer_init` fires, and its `wordpress@<host>` default is rejected outright on a
 host without a dot, which fails the send before any provider is reached.
 
+## Admin screens
+
+Top-level tabs are Overview, Settings, Logs and Docs, routed off the URL hash by
+`src/index.jsx` (read once at mount — the app does not listen for `hashchange`).
+`Settings` is `pages/Advanced.jsx`, whose sub-tabs are **Provider** (the default,
+rendering `pages/Provider.jsx`), General and Tools, addressed as
+`#advanced/<sub-tab>`. `#provider` is redirected to `#advanced/provider` for links
+predating the move.
+
+`Advanced.jsx` and `Provider.jsx` both write the whole `insanemailer_settings`
+option, and `Advanced.jsx` stays mounted while you switch sub-tabs, so its snapshot
+goes stale as soon as Provider saves. Its save therefore copies only the keys in
+its `generalKeys` list onto the current settings. **Add a key to that list when you
+add a field to the General tab**, or the field will not save. `Provider.jsx` is
+unmounted and remounted by the `<Show>` on each switch, so it re-reads fresh.
+
+A missing or invalid `from_email`, or a missing `from_name`, raises a warning banner
+across the admin screens and a "Not set" flag on the Overview card and the Sender
+Details panel. Without a valid sender WordPress falls back to `wordpress@<host>`,
+which many providers reject.
+
 ## Documentation surfaces
 
 | File | Audience | Update when |
