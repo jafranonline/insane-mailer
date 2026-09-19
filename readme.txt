@@ -71,7 +71,7 @@ The provider you choose, and its Terms and Privacy Policy, apply to that data:
 * Postmark (api.postmarkapp.com) - Terms: https://postmarkapp.com/terms-of-service - Privacy: https://postmarkapp.com/privacy-policy
 * SparkPost (api.sparkpost.com) - Terms: https://www.sparkpost.com/policies/tou/ - Privacy: https://www.sparkpost.com/policies/privacy/
 * Brevo (api.brevo.com) - Terms: https://www.brevo.com/legal/termsofuse/ - Privacy: https://www.brevo.com/legal/privacypolicy/
-* Mandrill (mandrillapp.com) - Terms: https://mailchimp.com/legal/terms/ - Privacy: https://mailchimp.com/legal/privacy/
+* Mandrill (mandrillapp.com) - Terms: https://mailchimp.com/legal/terms/ - Privacy: https://www.intuit.com/privacy/statement/
 * Elastic Email (api.elasticemail.com) - Terms: https://elasticemail.com/resources/usage-policies/terms-of-use - Privacy: https://elasticemail.com/resources/usage-policies/privacy-policy
 * SMTP2GO (api.smtp2go.com) - Terms: https://www.smtp2go.com/terms/ - Privacy: https://www.smtp2go.com/privacy/
 * MailerSend (api.mailersend.com) - Terms: https://www.mailersend.com/legal/terms-of-service - Privacy: https://www.mailersend.com/legal/privacy-policy
