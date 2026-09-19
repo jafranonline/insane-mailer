@@ -1,5 +1,5 @@
 === Insane Mailer - SMTP, Email Logs & Delivery ===
-Contributors: arraystory
+Contributors: arraystory, iamjafran
 Tags: smtp, email log, mailer, transactional email, email delivery
 Requires at least: 6.2
 Tested up to: 7.0
@@ -72,17 +72,17 @@ The provider you choose, and its Terms and Privacy Policy, apply to that data:
 * Brevo (api.brevo.com) - Terms: https://www.brevo.com/legal/termsofuse/ - Privacy: https://www.brevo.com/legal/privacypolicy/
 * Mandrill (mandrillapp.com) - Terms: https://mailchimp.com/legal/terms/ - Privacy: https://mailchimp.com/legal/privacy/
 * Elastic Email (api.elasticemail.com) - Terms: https://elasticemail.com/resources/usage-policies/terms-of-use - Privacy: https://elasticemail.com/resources/usage-policies/privacy-policy
-* SMTP2GO (api.smtp2go.com) - Terms: https://www.smtp2go.com/terms-and-conditions/ - Privacy: https://www.smtp2go.com/privacy-policy/
+* SMTP2GO (api.smtp2go.com) - Terms: https://www.smtp2go.com/terms/ - Privacy: https://www.smtp2go.com/privacy/
 * MailerSend (api.mailersend.com) - Terms: https://www.mailersend.com/legal/terms-of-service - Privacy: https://www.mailersend.com/legal/privacy-policy
 * Resend (api.resend.com) - Terms: https://resend.com/legal/terms-of-service - Privacy: https://resend.com/legal/privacy-policy
 * Loops (app.loops.so) - Terms: https://loops.so/terms - Privacy: https://loops.so/privacy
 * Cloudflare Email Service (api.cloudflare.com) - Terms: https://www.cloudflare.com/terms/ - Privacy: https://www.cloudflare.com/privacypolicy/
-* SMTP.com (api.smtp.com) - Terms: https://www.smtp.com/policies/terms-conditions/ - Privacy: https://www.smtp.com/policies/privacy-policy/
-* SocketLabs (injection.socketlabs.com) - Terms: https://www.socketlabs.com/legal/terms-of-use/ - Privacy: https://www.socketlabs.com/legal/privacy-policy/
-* Mailtrap (send.api.mailtrap.io) - Terms: https://mailtrap.io/terms-and-conditions/ - Privacy: https://mailtrap.io/privacy-policy/
+* SMTP.com (api.smtp.com) - Terms: https://www.smtp.com/policies/terms/ - Privacy: https://www.smtp.com/policies/privacy-policy/
+* SocketLabs (injection.socketlabs.com) - Terms: https://www.socketlabs.com/legal/tos/ - Privacy: https://www.socketlabs.com/legal/privacy/
+* Mailtrap (send.api.mailtrap.io) - Terms: https://mailtrap.io/terms/ - Privacy: https://mailtrap.io/privacy/
 * Mailjet (api.mailjet.com) - Terms: https://www.mailjet.com/legal/terms/ - Privacy: https://www.mailjet.com/legal/privacy-policy/
 * ZeptoMail (api.zeptomail.com) - Terms: https://www.zoho.com/zeptomail/terms.html - Privacy: https://www.zoho.com/privacy.html
-* Netcore (emailapi.netcoresmartech.com) - Terms: https://netcorecloud.com/terms-conditions/ - Privacy: https://netcorecloud.com/privacy-policy/
+* Netcore (emailapi.netcoresmartech.com) - Terms: https://netcorecloud.com/terms-of-service/ - Privacy: https://netcorecloud.com/privacy-policy/
 * Gmail / Google Workspace (gmail.googleapis.com, oauth2.googleapis.com) - Terms: https://policies.google.com/terms - Privacy: https://policies.google.com/privacy
 * Outlook / Microsoft 365 (graph.microsoft.com, login.microsoftonline.com) - Terms: https://www.microsoft.com/servicesagreement/ - Privacy: https://privacy.microsoft.com/privacystatement
 
