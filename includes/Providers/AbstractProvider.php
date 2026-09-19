@@ -76,4 +76,14 @@ abstract class INSANEMAILER_Abstract_Provider implements INSANEMAILER_Provider_I
 	protected function get_credential( $key, $default = null ) {
 		return $this->credentials[ $key ] ?? $default;
 	}
+
+	protected function get_credential_any( array $keys, $default = null ) {
+		foreach ( $keys as $key ) {
+			if ( ! empty( $this->credentials[ $key ] ) ) {
+				return $this->credentials[ $key ];
+			}
+		}
+
+		return $default;
+	}
 }

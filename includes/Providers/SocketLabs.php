@@ -13,8 +13,8 @@ class INSANEMAILER_Provider_SocketLabs extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function send_raw( $mail_data ) {
-		$server_id = $this->get_credential( 'socketlabs_server_id' );
-		$api_key   = $this->get_credential( 'socketlabs_api_key' );
+		$server_id = $this->get_credential_any( [ 'server_id', 'socketlabs_server_id' ] );
+		$api_key   = $this->get_credential_any( [ 'api_key', 'socketlabs_api_key' ] );
 
 		if ( empty( $server_id ) || empty( $api_key ) ) {
 			return [
@@ -97,8 +97,8 @@ class INSANEMAILER_Provider_SocketLabs extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function test_connection() {
-		$server_id = $this->get_credential( 'socketlabs_server_id' );
-		$api_key   = $this->get_credential( 'socketlabs_api_key' );
+		$server_id = $this->get_credential_any( [ 'server_id', 'socketlabs_server_id' ] );
+		$api_key   = $this->get_credential_any( [ 'api_key', 'socketlabs_api_key' ] );
 
 		if ( empty( $server_id ) || empty( $api_key ) ) {
 			return [

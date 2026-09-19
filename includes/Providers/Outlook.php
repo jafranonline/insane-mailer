@@ -105,8 +105,8 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 	}
 
 	private function refresh_access_token() {
-		$client_id     = $this->get_credential( 'outlook_client_id' );
-		$client_secret = $this->get_credential( 'outlook_client_secret' );
+		$client_id     = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
+		$client_secret = $this->get_credential_any( [ 'client_secret', 'outlook_client_secret' ] );
 		$refresh_token = $this->get_credential( 'outlook_refresh_token' );
 
 		if ( empty( $refresh_token ) ) {
@@ -148,8 +148,8 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function test_connection() {
-		$client_id     = $this->get_credential( 'outlook_client_id' );
-		$client_secret = $this->get_credential( 'outlook_client_secret' );
+		$client_id     = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
+		$client_secret = $this->get_credential_any( [ 'client_secret', 'outlook_client_secret' ] );
 		$access_token  = $this->get_credential( 'outlook_access_token' );
 
 		if ( empty( $client_id ) || empty( $client_secret ) ) {
@@ -201,7 +201,7 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function get_auth_url() {
-		$client_id    = $this->get_credential( 'outlook_client_id' );
+		$client_id    = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
 		$redirect_uri = admin_url( 'admin.php?page=insane-mailer&oauth=outlook' );
 
 		$params = [
@@ -216,8 +216,8 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function handle_oauth_callback( $code ) {
-		$client_id     = $this->get_credential( 'outlook_client_id' );
-		$client_secret = $this->get_credential( 'outlook_client_secret' );
+		$client_id     = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
+		$client_secret = $this->get_credential_any( [ 'client_secret', 'outlook_client_secret' ] );
 		$redirect_uri  = admin_url( 'admin.php?page=insane-mailer&oauth=outlook' );
 
 		$result = $this->make_request(

@@ -13,8 +13,8 @@ class INSANEMAILER_Provider_Mailjet extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function send_raw( $mail_data ) {
-		$api_key    = $this->get_credential( 'mailjet_api_key' );
-		$secret_key = $this->get_credential( 'mailjet_secret_key' );
+		$api_key    = $this->get_credential_any( [ 'api_key', 'mailjet_api_key' ] );
+		$secret_key = $this->get_credential_any( [ 'secret_key', 'mailjet_secret_key' ] );
 
 		if ( empty( $api_key ) || empty( $secret_key ) ) {
 			return [
@@ -96,8 +96,8 @@ class INSANEMAILER_Provider_Mailjet extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function test_connection() {
-		$api_key    = $this->get_credential( 'mailjet_api_key' );
-		$secret_key = $this->get_credential( 'mailjet_secret_key' );
+		$api_key    = $this->get_credential_any( [ 'api_key', 'mailjet_api_key' ] );
+		$secret_key = $this->get_credential_any( [ 'secret_key', 'mailjet_secret_key' ] );
 
 		if ( empty( $api_key ) || empty( $secret_key ) ) {
 			return [

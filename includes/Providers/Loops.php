@@ -13,7 +13,7 @@ class INSANEMAILER_Provider_Loops extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function send_raw( $mail_data ) {
-		$api_key = $this->get_credential( 'loops_api_key' );
+		$api_key = $this->get_credential_any( [ 'api_key', 'loops_api_key' ] );
 
 		if ( empty( $api_key ) ) {
 			return [
@@ -63,7 +63,7 @@ class INSANEMAILER_Provider_Loops extends INSANEMAILER_Abstract_Provider {
 	}
 
 	public function test_connection() {
-		$api_key = $this->get_credential( 'loops_api_key' );
+		$api_key = $this->get_credential_any( [ 'api_key', 'loops_api_key' ] );
 
 		if ( empty( $api_key ) ) {
 			return [
