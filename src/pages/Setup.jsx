@@ -26,6 +26,7 @@ import mandrillLogo from '../logos/mandril.svg?raw';
 import postmarkLogo from '../logos/postmark.svg?raw';
 import mailersendLogo from '../logos/mailsend.svg?raw';
 import smtpcomLogo from '../logos/smtpcom.svg?raw';
+import cloudflareLogo from '../logos/cloudflare.svg?raw';
 import phpLogo from '../logos/php-svgrepo-com.svg?raw';
 
 const providerLogos = {
@@ -50,6 +51,7 @@ const providerLogos = {
   zeptomail: zohoLogo,
   gmail: gmailLogo,
   outlook: outlookLogo,
+  cloudflare: cloudflareLogo,
 };
 
 // Plugin icon component
@@ -120,6 +122,7 @@ const providers = [
   { id: 'mailersend', name: 'MailerSend', desc: 'By MailerLite' },
   { id: 'mailtrap', name: 'Mailtrap', desc: 'Dev & production' },
   { id: 'loops', name: 'Loops', desc: 'SaaS email' },
+  { id: 'cloudflare', name: 'Cloudflare', desc: 'Cloudflare Email Service' },
   { id: 'mandrill', name: 'Mandrill', desc: 'Mailchimp Transactional' },
   { id: 'smtp2go', name: 'SMTP2GO', desc: 'SMTP relay' },
   { id: 'socketlabs', name: 'SocketLabs', desc: 'Email delivery' },
@@ -161,6 +164,7 @@ const providerLabels = {
   'postmark': 'Postmark',
   'brevo': 'Brevo',
   'sparkpost': 'SparkPost',
+  'cloudflare': 'Cloudflare Email Service',
   'default': 'PHP Mail',
 };
 
@@ -179,6 +183,7 @@ const providerFields = {
   mailersend: [{ key: 'mailersend_api_key', label: 'API Key' }],
   mailtraim: [{ key: 'mailtrap_api_key', label: 'API Key' }],
   loops: [{ key: 'loops_api_key', label: 'API Key' }],
+  cloudflare: [{ key: 'cloudflare_api_token', label: 'API Token' }, { key: 'cloudflare_account_id', label: 'Account ID' }],
   mandrill: [{ key: 'mandrill_api_key', label: 'API Key' }],
   smtp2go: [{ key: 'smtp2go_api_key', label: 'API Key' }],
   socketlabs: [{ key: 'socketlabs_server_id', label: 'Server ID' }, { key: 'socketlabs_api_key', label: 'API Key' }],
@@ -909,6 +914,28 @@ export default function Setup({ onComplete }) {
                     </div>
                   </Match>
 
+                  <Match when={settings().provider === 'cloudflare'}>
+                    <div class="im:space-y-4">
+                      <div>
+                        <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">API Token</label>
+                        <PasswordInput
+                          value={getCredential('api_key')}
+                          onInput={(e) => updateCredential('api_key', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Account ID</label>
+                        <input
+                          type="text"
+                          class="im:w-full im:px-3 im:py-2 im:border im:border-gray-300 im:rounded-md im:text-sm im:outline-none focus:im:ring-2 focus:im:ring-gray-900 focus:im:border-transparent"
+                          value={getCredential('account_id')}
+                          onInput={(e) => updateCredential('account_id', e.target.value)}
+                          placeholder="023e105f4ecef8ad9ca31a8372d0c353"
+                        />
+                      </div>
+                    </div>
+                  </Match>
+
                   <Match when={['gmail', 'outlook'].includes(settings().provider)}>
                     <div class="im:space-y-4">
                       <div>
@@ -931,7 +958,7 @@ export default function Setup({ onComplete }) {
                   </Match>
 
                   {/* Default: Single API Key field */}
-                  <Match when={!['ses', 'mailgun', 'smtp', 'socketlabs', 'mailjet', 'gmail', 'outlook'].includes(settings().provider)}>
+                  <Match when={!['ses', 'mailgun', 'smtp', 'socketlabs', 'mailjet', 'gmail', 'outlook', 'cloudflare'].includes(settings().provider)}>
                     <div>
                       <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">API Key</label>
                       <PasswordInput

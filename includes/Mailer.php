@@ -22,6 +22,63 @@ class INSANEMAILER_Mailer {
 		$this->settings = get_option( 'insanemailer_settings', [] );
 		add_action( 'phpmailer_init', [ $this, 'intercept_phpmailer' ], 999 );
 		add_filter( 'pre_wp_mail', [ $this, 'maybe_queue_mail' ], 10, 2 );
+		add_filter( 'wp_mail_from', [ $this, 'filter_from_email' ], 99 );
+		add_filter( 'wp_mail_from_name', [ $this, 'filter_from_name' ], 99 );
+	}
+
+	/**
+	 * Apply the configured sender before PHPMailer validates it.
+	 *
+	 * WordPress calls setFrom() before phpmailer_init fires, so overriding the
+	 * sender only in send_direct() is too late: the default wordpress@<host> is
+	 * rejected outright on hosts without a dot (localhost), failing the send
+	 * before any provider is reached.
+	 */
+	public function filter_from_email( $from_email ) {
+		$configured = $this->settings['from_email'] ?? '';
+
+		if ( empty( $configured ) || ! is_email( $configured ) ) {
+			return $from_email;
+		}
+
+		if ( ! empty( $this->settings['force_from'] ) || $this->is_default_from_email( $from_email ) ) {
+			return $configured;
+		}
+
+		return $from_email;
+	}
+
+	public function filter_from_name( $from_name ) {
+		$configured = $this->settings['from_name'] ?? '';
+
+		if ( empty( $configured ) ) {
+			return $from_name;
+		}
+
+		if ( ! empty( $this->settings['force_from'] ) || 'WordPress' === $from_name ) {
+			return $configured;
+		}
+
+		return $from_name;
+	}
+
+	/**
+	 * Whether the address is the wordpress@<host> fallback wp_mail() builds when
+	 * no From header was supplied, rather than a caller-provided sender.
+	 */
+	private function is_default_from_email( $from_email ) {
+		$sitename = wp_parse_url( network_home_url(), PHP_URL_HOST );
+		$default  = 'wordpress@';
+
+		if ( null !== $sitename ) {
+			if ( 0 === strpos( $sitename, 'www.' ) ) {
+				$sitename = substr( $sitename, 4 );
+			}
+
+			$default .= $sitename;
+		}
+
+		return $from_email === $default;
 	}
 
 	public function maybe_queue_mail( $null, $atts ) {
@@ -29,13 +86,75 @@ class INSANEMAILER_Mailer {
 
 		// If direct mode, log the email before sending
 		if ( 'direct' === $send_mode || $this->should_bypass_queue() ) {
-			$this->log_direct_email( $atts );
+			$mail_data = $this->log_direct_email( $atts );
+
+			$provider_name = $this->settings['provider'] ?? 'default';
+
+			/*
+			 * API providers deliver over HTTP, so PHPMailer has no part to play.
+			 * Letting wp_mail() continue would attempt a second delivery over the
+			 * placeholder localhost:25 transport, and its failure would make
+			 * wp_mail() return false for a message the provider already accepted.
+			 */
+			if ( 'default' !== $provider_name && 'smtp' !== $provider_name ) {
+				return $this->send_direct_via_api( $mail_data );
+			}
+
 			return null;
 		}
 
 		// Queue mode: queue the email and return true to short-circuit wp_mail
 		$this->queue_from_atts( $atts );
 		return true;
+	}
+
+	/**
+	 * Deliver a direct-mode email through the configured API provider.
+	 *
+	 * @param array $mail_data Parsed message, as returned by log_direct_email().
+	 * @return bool Whether the provider accepted the message, for pre_wp_mail.
+	 */
+	private function send_direct_via_api( $mail_data ) {
+		$provider_name  = $this->settings['provider'] ?? 'default';
+		$provider_class = $this->get_provider_class( $provider_name );
+
+		if ( ! $provider_class ) {
+			return $this->fail_direct_email( 'Provider class not found' );
+		}
+
+		try {
+			$provider = new $provider_class( $this->settings['credentials'] ?? [] );
+			$result   = $provider->send_raw( $mail_data );
+
+			if ( empty( $result['success'] ) ) {
+				return $this->fail_direct_email( $result['error'] ?? 'Unknown error' );
+			}
+
+			$this->record_direct_email_result( $result );
+
+			do_action( 'insanemailer_email_sent', $this->current_direct_email_id, $result );
+
+			return true;
+		} catch ( Exception $e ) {
+			return $this->fail_direct_email( $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Record a direct-send failure and mirror it onto wp_mail_failed, which
+	 * callers rely on for the reason a send did not go through.
+	 */
+	private function fail_direct_email( $error ) {
+		$this->update_direct_email_status( 'failed', $error );
+
+		do_action( 'insanemailer_email_failed', $this->current_direct_email_id, $error );
+
+		do_action(
+			'wp_mail_failed',
+			new WP_Error( 'wp_mail_failed', $error )
+		);
+
+		return false;
 	}
 
 	public function intercept_phpmailer( $phpmailer ) {
@@ -257,6 +376,8 @@ class INSANEMAILER_Mailer {
 				throw new Exception( $result['error'] ?? 'Unknown error' );
 			}
 
+			$this->record_direct_email_result( $result );
+
 			do_action( 'insanemailer_email_sent', $this->current_direct_email_id, $result );
 		} catch ( Exception $e ) {
 			$this->update_direct_email_status( 'failed', $e->getMessage() );
@@ -287,6 +408,7 @@ class INSANEMAILER_Mailer {
 			'mailersend'   => 'INSANEMAILER_Provider_MailerSend',
 			'loops'        => 'INSANEMAILER_Provider_Loops',
 			'resend'       => 'INSANEMAILER_Provider_Resend',
+			'cloudflare'   => 'INSANEMAILER_Provider_Cloudflare',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -347,6 +469,30 @@ class INSANEMAILER_Mailer {
 		$text = trim( $text );
 
 		return $text;
+	}
+
+	private function record_direct_email_result( $result ) {
+		if ( ! $this->current_direct_email_id ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
+		$wpdb->update(
+			$table_name,
+			[
+				'message_id'        => $result['message_id'] ?? null,
+				'provider_response' => wp_json_encode( $result ),
+				'updated_at'        => current_time( 'mysql' ),
+			],
+			[ 'id' => $this->current_direct_email_id ],
+			[ '%s', '%s', '%s' ],
+			[ '%d' ]
+		);
+
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 	}
 
 	private function update_direct_email_status( $status, $error = null ) {
@@ -443,6 +589,11 @@ class INSANEMAILER_Mailer {
 			}
 		}
 
+		// An API send bypasses wp_mail()'s own sender pipeline, so run the core
+		// sender filters here to keep third-party overrides working.
+		$from_email = apply_filters( 'wp_mail_from', $from_email );
+		$from_name  = apply_filters( 'wp_mail_from_name', $from_name );
+
 		$is_html    = stripos( $content_type, 'text/html' ) !== false;
 		$body_html  = $is_html ? $message : '';
 		$body_plain = $is_html ? '' : $message;
@@ -489,5 +640,22 @@ class INSANEMAILER_Mailer {
 
 			$this->current_direct_email_id = $email_id;
 		}
+
+		return [
+			'to'          => [
+				'email' => $to_email,
+				'name'  => $to_name,
+			],
+			'from'        => [
+				'email' => $from_email,
+				'name'  => $from_name,
+			],
+			'reply_to'    => $reply_to,
+			'subject'     => $subject,
+			'body_html'   => $body_html,
+			'body_plain'  => $body_plain,
+			'headers'     => $parsed_headers,
+			'attachments' => (array) $attachments,
+		];
 	}
 }

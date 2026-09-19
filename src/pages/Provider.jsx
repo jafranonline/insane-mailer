@@ -26,6 +26,7 @@ import mandrillLogo from '../logos/mandril.svg?raw';
 import postmarkLogo from '../logos/postmark.svg?raw';
 import mailersendLogo from '../logos/mailsend.svg?raw';
 import smtpcomLogo from '../logos/smtpcom.svg?raw';
+import cloudflareLogo from '../logos/cloudflare.svg?raw';
 import phpLogo from '../logos/php-svgrepo-com.svg?raw';
 
 const providerLogos = {
@@ -50,6 +51,7 @@ const providerLogos = {
   zeptomail: zohoLogo,
   gmail: gmailLogo,
   outlook: outlookLogo,
+  cloudflare: cloudflareLogo,
 };
 
 const ProviderIcon = ({ id }) => {
@@ -158,6 +160,7 @@ const providers = [
   { id: 'mailersend', name: 'MailerSend', desc: 'By MailerLite' },
   { id: 'mailtrap', name: 'Mailtrap', desc: 'Dev & production' },
   { id: 'loops', name: 'Loops', desc: 'SaaS email' },
+  { id: 'cloudflare', name: 'Cloudflare', desc: 'Cloudflare Email Service' },
 
   // Tier 4: Others
   { id: 'mandrill', name: 'Mandrill', desc: 'Mailchimp Transactional' },
@@ -335,6 +338,7 @@ export default function Settings() {
     mailersend: [{ key: 'mailersend_api_key', label: 'API Key' }],
     mailtraim: [{ key: 'mailtrap_api_key', label: 'API Key' }],
     loops: [{ key: 'loops_api_key', label: 'API Key' }],
+    cloudflare: [{ key: 'cloudflare_api_token', label: 'API Token' }, { key: 'cloudflare_account_id', label: 'Account ID' }],
     mandrill: [{ key: 'mandrill_api_key', label: 'API Key' }],
     smtp2go: [{ key: 'smtp2go_api_key', label: 'API Key' }],
     socketlabs: [{ key: 'socketlabs_server_id', label: 'Server ID' }, { key: 'socketlabs_api_key', label: 'API Key' }],
@@ -692,6 +696,18 @@ export default function Settings() {
                       </div>
                     </Match>
 
+                    <Match when={settings().provider === 'cloudflare'}>
+                      <div class="im:max-w-md">
+                        <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">API Token</label>
+                        <PasswordInput
+                          value={getCredential('api_key')}
+                          onInput={(e) => updateCredential('api_key', e.target.value)}
+                          hasError={hasError()}
+                        />
+                        <p class="im:mt-2 im:text-xs im:text-gray-500">Needs the "Email Sending: Edit" permission.</p>
+                      </div>
+                    </Match>
+
                     <Match when={settings().provider === 'mandrill'}>
                       <div class="im:max-w-md">
                         <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">API Key</label>
@@ -817,6 +833,20 @@ export default function Settings() {
 
                 {/* Non-sensitive fields shown regardless of storage mode */}
                 <Switch>
+                  <Match when={settings().provider === 'cloudflare'}>
+                    <div class="im:max-w-md">
+                      <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Account ID</label>
+                      <input
+                        type="text"
+                        class={`im:w-full im:px-3 im:py-2 im:border im:rounded-md im:text-sm im:outline-none ${inputErrorClass()}`}
+                        value={getCredential('account_id')}
+                        onInput={(e) => updateCredential('account_id', e.target.value)}
+                        placeholder="023e105f4ecef8ad9ca31a8372d0c353"
+                      />
+                      <p class="im:mt-2 im:text-xs im:text-gray-500">Found in the Cloudflare dashboard sidebar.</p>
+                    </div>
+                  </Match>
+
                   <Match when={settings().provider === 'ses'}>
                     <div class="im:max-w-xs">
                       <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Region</label>

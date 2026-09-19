@@ -163,6 +163,7 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'client_secret',
 			'gmail_client_secret',
 			'outlook_client_secret',
+			'cloudflare_api_token',
 		];
 
 		foreach ( $sensitive_keys as $key ) {
@@ -346,6 +347,7 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'smtpcom'      => 'SMTP.com',
 			'pepipost'     => 'Netcore',
 			'resend'       => 'Resend',
+			'cloudflare'   => 'Cloudflare Email Service',
 			'mailersend'   => 'MailerSend',
 			'mailtrap'     => 'Mailtrap',
 			'loops'        => 'Loops',
@@ -516,6 +518,9 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
 			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
+			// Cloudflare
+			'cloudflare_api_token'   => 'INSANEMAILER_CLOUDFLARE_API_TOKEN',
+			'cloudflare_account_id'  => 'INSANEMAILER_CLOUDFLARE_ACCOUNT_ID',
 			// Resend
 			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend
@@ -576,6 +581,7 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'gmail'        => 'INSANEMAILER_Provider_Gmail',
 			'outlook'      => 'INSANEMAILER_Provider_Outlook',
 			'smtp'         => 'INSANEMAILER_Provider_SMTP',
+			'cloudflare'   => 'INSANEMAILER_Provider_Cloudflare',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {
@@ -710,6 +716,9 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
 			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
+			// Cloudflare
+			'cloudflare_api_token'   => 'INSANEMAILER_CLOUDFLARE_API_TOKEN',
+			'cloudflare_account_id'  => 'INSANEMAILER_CLOUDFLARE_ACCOUNT_ID',
 			// Resend
 			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend

@@ -24,6 +24,9 @@ export const constantNames = {
   smtpcom_api_key: 'INSANEMAILER_SMTPCOM_API_KEY',
   // Netcore/Pepipost
   pepipost_api_key: 'INSANEMAILER_PEPIPOST_API_KEY',
+  // Cloudflare
+  cloudflare_api_token: 'INSANEMAILER_CLOUDFLARE_API_TOKEN',
+  cloudflare_account_id: 'INSANEMAILER_CLOUDFLARE_ACCOUNT_ID',
   // Resend
   resend_api_key: 'INSANEMAILER_RESEND_API_KEY',
   // MailerSend

@@ -243,6 +243,7 @@ class INSANEMAILER_Queue {
 			'mailersend'   => 'INSANEMAILER_Provider_MailerSend',
 			'loops'        => 'INSANEMAILER_Provider_Loops',
 			'resend'       => 'INSANEMAILER_Provider_Resend',
+			'cloudflare'   => 'INSANEMAILER_Provider_Cloudflare',
 		];
 
 		if ( ! isset( $providers[ $provider_name ] ) ) {

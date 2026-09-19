@@ -47,6 +47,7 @@ const providerLabels = {
   'zeptomail': 'ZeptoMail',
   'smtp2go': 'SMTP2GO',
   'mailjet': 'Mailjet',
+  'cloudflare': 'Cloudflare Email Service',
   'default': 'PHP Mail',
 };
 

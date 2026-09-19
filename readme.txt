@@ -46,7 +46,7 @@ Receive webhooks from supported providers to track bounces and complaints. Keep 
 ### Supported Email Providers
 
 **Transactional Email Services**
-Amazon SES, SendGrid, Mailgun, Postmark, SparkPost, Brevo (Sendinblue), Mandrill, Elastic Email, SMTP2GO, MailerSend, Resend, Loops
+Amazon SES, SendGrid, Mailgun, Postmark, SparkPost, Brevo (Sendinblue), Mandrill, Elastic Email, SMTP2GO, MailerSend, Resend, Loops, Cloudflare Email Service
 
 **SMTP Providers**
 Generic SMTP, Gmail, Outlook, SMTP.com, SocketLabs, Mailtrap, Mailjet, ZeptoMail, Netcore
@@ -79,6 +79,7 @@ The provider you choose, and its Terms and Privacy Policy, apply to that data:
 * MailerSend (api.mailersend.com) - Terms: https://www.mailersend.com/legal/terms-of-service - Privacy: https://www.mailersend.com/legal/privacy-policy
 * Resend (api.resend.com) - Terms: https://resend.com/legal/terms-of-service - Privacy: https://resend.com/legal/privacy-policy
 * Loops (app.loops.so) - Terms: https://loops.so/terms - Privacy: https://loops.so/privacy
+* Cloudflare Email Service (api.cloudflare.com) - Terms: https://www.cloudflare.com/terms/ - Privacy: https://www.cloudflare.com/privacypolicy/
 * SMTP.com (api.smtp.com) - Terms: https://www.smtp.com/policies/terms-conditions/ - Privacy: https://www.smtp.com/policies/privacy-policy/
 * SocketLabs (injection.socketlabs.com) - Terms: https://www.socketlabs.com/legal/terms-of-use/ - Privacy: https://www.socketlabs.com/legal/privacy-policy/
 * Mailtrap (send.api.mailtrap.io) - Terms: https://mailtrap.io/terms-and-conditions/ - Privacy: https://mailtrap.io/privacy-policy/

@@ -15,6 +15,7 @@ const providerTabs = [
   { id: 'sendgrid', label: 'SendGrid', icon: '📨' },
   { id: 'brevo', label: 'Brevo', icon: '💙' },
   { id: 'postmark', label: 'Postmark', icon: '📮' },
+  { id: 'cloudflare', label: 'Cloudflare', icon: '🟠' },
   { id: 'smtp', label: 'Generic SMTP', icon: '📬' },
 ];
 
@@ -123,6 +124,31 @@ const providerDocs = {
     ],
     links: [
       { label: 'Postmark Dashboard', url: 'https://account.postmarkapp.com/' },
+    ],
+  },
+  cloudflare: {
+    title: 'Cloudflare Email Service Setup',
+    steps: [
+      'Your sending domain must already use Cloudflare DNS',
+      'In the Cloudflare dashboard go to Compute > Email Service > Email Sending',
+      'Select Onboard Domain and pick your domain — Cloudflare adds the MX, SPF, DKIM and DMARC records on the cf-bounce subdomain',
+      'Wait for DNS to propagate (usually 5-15 minutes)',
+      'Go to My Profile > API Tokens and create a token with the "Email Sending: Edit" permission',
+      'Copy the token and your Account ID (shown in the dashboard sidebar) to plugin settings',
+    ],
+    credentials: [
+      { name: 'API Token', desc: 'Created under API Tokens, needs Email Sending: Edit' },
+      { name: 'Account ID', desc: 'Shown in the Cloudflare dashboard sidebar' },
+    ],
+    tips: [
+      'Before a sending domain is onboarded you can only send to verified destination addresses in your account.',
+      'Cloudflare only accepts an allowlist of email headers. Headers it rejects are stripped automatically and listed on the log entry.',
+      'Total message size, including attachments, must stay under 5 MiB.',
+    ],
+    links: [
+      { label: 'Email Sending Dashboard', url: 'https://dash.cloudflare.com/?to=/:account/email-service/sending' },
+      { label: 'Cloudflare API Tokens', url: 'https://dash.cloudflare.com/profile/api-tokens' },
+      { label: 'Email Service Docs', url: 'https://developers.cloudflare.com/email-service/' },
     ],
   },
   smtp: {

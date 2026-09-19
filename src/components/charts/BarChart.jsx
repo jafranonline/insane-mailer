@@ -16,6 +16,7 @@ const providerLabels = {
   mailersend: 'MailerSend',
   mailtrap: 'Mailtrap',
   loops: 'Loops',
+  cloudflare: 'Cloudflare',
   mandrill: 'Mandrill',
   smtp2go: 'SMTP2GO',
   socketlabs: 'SocketLabs',

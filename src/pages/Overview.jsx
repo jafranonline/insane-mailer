@@ -59,6 +59,7 @@ export default function Overview(props) {
       sendgrid: 'SendGrid',
       brevo: 'Brevo',
       postmark: 'Postmark',
+      cloudflare: 'Cloudflare Email Service',
     };
     return providers[settings().provider] || settings().provider || 'Not configured';
   };

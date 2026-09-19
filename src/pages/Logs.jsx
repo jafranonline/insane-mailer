@@ -9,6 +9,21 @@ const modeOptions = [
   { value: 'direct', label: 'Direct' },
 ];
 
+// Providers can report non-fatal issues alongside a successful send, e.g.
+// Cloudflare stripping headers it does not allow.
+const providerWarnings = (email) => {
+  if (!email?.provider_response) return [];
+
+  try {
+    const parsed = typeof email.provider_response === 'string'
+      ? JSON.parse(email.provider_response)
+      : email.provider_response;
+    return Array.isArray(parsed?.warnings) ? parsed.warnings : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function Emails() {
   const [emails, setEmails] = createSignal([]);
   const [loading, setLoading] = createSignal(true);
@@ -733,6 +748,19 @@ export default function Emails() {
                       <div>
                         <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Headers</label>
                         <pre class="im:text-xs im:text-gray-700 im:bg-gray-50 im:border im:border-gray-200 im:rounded-md im:p-3 im:overflow-x-auto im:whitespace-pre-wrap im:max-h-32 im:overflow-y-auto">{typeof selectedEmail().headers === 'string' ? selectedEmail().headers : JSON.stringify(JSON.parse(selectedEmail().headers || '{}'), null, 2)}</pre>
+                      </div>
+                    </Show>
+                    <Show when={providerWarnings(selectedEmail()).length > 0}>
+                      <div class="im:p-3 im:bg-amber-50 im:border im:border-amber-200 im:rounded-md im:flex im:items-start im:gap-3">
+                        <svg class="im:w-5 im:h-5 im:text-amber-500 im:shrink-0 im:mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                        </svg>
+                        <div>
+                          <p class="im:text-sm im:font-medium im:text-amber-800">Delivered with warnings</p>
+                          <For each={providerWarnings(selectedEmail())}>
+                            {(warning) => <p class="im:text-sm im:text-amber-700">{warning}</p>}
+                          </For>
+                        </div>
                       </div>
                     </Show>
                     <Show when={selectedEmail().provider_response}>

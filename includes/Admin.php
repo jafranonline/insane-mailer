@@ -130,6 +130,9 @@ class INSANEMAILER_Admin {
 			'smtpcom_api_key'        => 'INSANEMAILER_SMTPCOM_API_KEY',
 			// Netcore/Pepipost
 			'pepipost_api_key'       => 'INSANEMAILER_PEPIPOST_API_KEY',
+			// Cloudflare
+			'cloudflare_api_token'   => 'INSANEMAILER_CLOUDFLARE_API_TOKEN',
+			'cloudflare_account_id'  => 'INSANEMAILER_CLOUDFLARE_ACCOUNT_ID',
 			// Resend
 			'resend_api_key'         => 'INSANEMAILER_RESEND_API_KEY',
 			// MailerSend
@@ -190,7 +193,7 @@ class INSANEMAILER_Admin {
 		$settings = get_option( 'insanemailer_settings', $default_settings );
 		$settings = array_merge( $default_settings, $settings );
 
-		$sensitive_keys = [ 'password', 'secret_key', 'api_key', 'server_token' ];
+		$sensitive_keys = [ 'password', 'secret_key', 'api_key', 'server_token', 'cloudflare_api_token' ];
 		foreach ( $sensitive_keys as $key ) {
 			if ( isset( $settings['credentials'][ $key ] ) && ! empty( $settings['credentials'][ $key ] ) ) {
 				$settings['credentials'][ $key ] = str_repeat( '*', 8 );
