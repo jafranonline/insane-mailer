@@ -2,7 +2,7 @@
 	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
 	"meta": {
 		"title": "Insane Mailer Live Preview",
-		"description": "Try the Insane Mailer SMTP, email logs, and queue dashboard."
+		"description": "Try the Insane Mailer SMTP, email logs, and delivery dashboard."
 	},
 	"landingPage": "/wp-admin/options-general.php?page=insane-mailer",
 	"preferredVersions": {

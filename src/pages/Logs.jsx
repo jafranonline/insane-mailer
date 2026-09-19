@@ -3,12 +3,6 @@ import { api } from '../api/client';
 import { toast } from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
 
-const modeOptions = [
-  { value: '', label: 'All Modes' },
-  { value: 'queue', label: 'Queue' },
-  { value: 'direct', label: 'Direct' },
-];
-
 // Providers can report non-fatal issues alongside a successful send, e.g.
 // Cloudflare stripping headers it does not allow.
 const providerWarnings = (email) => {
@@ -28,12 +22,12 @@ export default function Emails() {
   const [emails, setEmails] = createSignal([]);
   const [loading, setLoading] = createSignal(true);
   const [pagination, setPagination] = createSignal({ page: 1, per_page: 20, total: 0 });
-  const [filters, setFilters] = createSignal({ status: '', search: '', send_mode: '' });
+  const [filters, setFilters] = createSignal({ status: '', search: '' });
   const [searchTimeout, setSearchTimeout] = createSignal(null);
   const [selectedEmail, setSelectedEmail] = createSignal(null);
   const [showClearConfirm, setShowClearConfirm] = createSignal(false);
   const [clearing, setClearing] = createSignal(false);
-  const [stats, setStats] = createSignal({ pending: 0, sent: 0, failed: 0, paused: 0, total: 0 });
+  const [stats, setStats] = createSignal({ sent: 0, failed: 0, bounced: 0, paused: 0, total: 0 });
   const [showActionsMenu, setShowActionsMenu] = createSignal(false);
   const [actionsAnimating, setActionsAnimating] = createSignal(false);
 
@@ -77,9 +71,9 @@ export default function Emails() {
       const response = await api.getStats();
       const s = response.data.stats;
       setStats({
-        pending: s.pending || 0,
         sent: s.sent || 0,
         failed: s.failed || 0,
+        bounced: s.bounced || 0,
         paused: s.paused || 0,
         total: s.total || 0,
       });
@@ -102,36 +96,18 @@ export default function Emails() {
     loadStats();
   });
 
-  const handleRetry = async (id) => {
+  const handleResend = async (id) => {
     try {
-      await api.retryEmail(id);
-      toast.success('Email queued for retry');
-      updateEmailInList(id, 'pending');
+      await api.resendEmail(id);
+      toast.success('Email resent');
+      updateEmailInList(id, 'sent');
+      loadEmails();
       loadStats();
     } catch (error) {
-      toast.error('Failed to retry: ' + error.message);
-    }
-  };
-
-  const handlePause = async (id) => {
-    try {
-      await api.pauseEmail(id);
-      toast.success('Email paused');
-      updateEmailInList(id, 'paused');
+      updateEmailInList(id, 'failed');
+      toast.error('Failed to resend: ' + error.message);
+      loadEmails();
       loadStats();
-    } catch (error) {
-      toast.error('Failed to pause: ' + error.message);
-    }
-  };
-
-  const handleResume = async (id) => {
-    try {
-      await api.resumeEmail(id);
-      toast.success('Email resumed');
-      updateEmailInList(id, 'pending');
-      loadStats();
-    } catch (error) {
-      toast.error('Failed to resume: ' + error.message);
     }
   };
 
@@ -161,17 +137,11 @@ export default function Emails() {
     loadEmails();
   };
 
-  const handleModeFilter = (send_mode) => {
-    setFilters({ ...filters(), send_mode });
-    setPagination({ ...pagination(), page: 1 });
-    loadEmails();
-  };
-
   const getStatusOptions = () => [
     { value: '', label: `All Status (${stats().total})` },
-    { value: 'pending', label: `Pending (${stats().pending || 0})` },
     { value: 'sent', label: `Sent (${stats().sent || 0})` },
     { value: 'failed', label: `Failed (${stats().failed || 0})` },
+    { value: 'bounced', label: `Bounced (${stats().bounced || 0})` },
     { value: 'paused', label: `Paused (${stats().paused || 0})` },
   ];
 
@@ -218,7 +188,7 @@ export default function Emails() {
       case 'bounced':
       case 'complained':
         return 'im:bg-amber-50 im:text-amber-700 im:border-amber-200';
-      case 'processing':
+      case 'sending':
         return 'im:bg-blue-50 im:text-blue-700 im:border-blue-200';
       case 'paused':
         return 'im:bg-purple-50 im:text-purple-700 im:border-purple-200';
@@ -260,14 +230,6 @@ export default function Emails() {
               class="im:w-64 im:pl-9 im:pr-3 im:py-2 im:border im:border-gray-300 im:rounded-md im:text-sm im:outline-none im:bg-white focus:im:ring-2 focus:im:ring-gray-900 focus:im:border-transparent"
               value={filters().search}
               onInput={(e) => handleSearchChange(e.target.value)}
-            />
-          </div>
-          <div class="im:w-32">
-            <SearchableSelect
-              options={modeOptions}
-              value={filters().send_mode}
-              onChange={(value) => handleModeFilter(value)}
-              placeholder="Mode"
             />
           </div>
           <div class="im:w-40">
@@ -351,7 +313,6 @@ export default function Emails() {
                   <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">ID</th>
                   <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Recipient</th>
                   <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Subject</th>
-                  <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Mode</th>
                   <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Status</th>
                   <th class="im:px-5 im:py-3 im:text-left im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Date</th>
                   <th class="im:px-5 im:py-3 im:text-right im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider">Actions</th>
@@ -408,7 +369,7 @@ export default function Emails() {
               <tbody class="im:divide-y im:divide-gray-100">
                 <Show when={emails().length === 0}>
                   <tr>
-                    <td colspan="7" class="im:px-5 im:py-12 im:text-center im:text-gray-500 im:text-sm">
+                    <td colspan="6" class="im:px-5 im:py-12 im:text-center im:text-gray-500 im:text-sm">
                       No emails found
                     </td>
                   </tr>
@@ -429,19 +390,9 @@ export default function Emails() {
                         <div class="im:text-sm im:text-gray-900 im:max-w-xs im:truncate">{email.subject}</div>
                       </td>
                       <td class="im:px-5 im:py-4">
-                        <span class="im:text-xs im:text-gray-500">
-                          {email.send_mode === 'direct' ? 'Direct' : 'Queue'}
-                        </span>
-                      </td>
-                      <td class="im:px-5 im:py-4">
                         <span class={`im:inline-flex im:items-center im:px-2 im:py-1 im:rounded-md im:text-xs im:font-medium im:border ${getStatusBadge(email.status)}`}>
                           {email.status}
                         </span>
-                        <Show when={email.attempts > 1}>
-                          <span class="im:ml-2 im:text-xs im:text-gray-400">
-                            {email.attempts}/{email.max_attempts}
-                          </span>
-                        </Show>
                       </td>
                       <td class="im:px-5 im:py-4">
                         <div class="im:text-sm im:text-gray-500">{formatDate(email.created_at)}</div>
@@ -458,38 +409,15 @@ export default function Emails() {
                             </svg>
                             View
                           </button>
-                          <Show when={email.status === 'pending'}>
-                            <button
-                              class="im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-amber-600 hover:im:bg-amber-50 im:rounded im:transition-colors"
-                              onClick={() => handlePause(email.id)}
-                            >
-                              <svg class="im:w-3.5 im:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Pause
-                            </button>
-                          </Show>
-                          <Show when={email.status === 'paused'}>
-                            <button
-                              class="im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-green-600 hover:im:bg-green-50 im:rounded im:transition-colors"
-                              onClick={() => handleResume(email.id)}
-                            >
-                              <svg class="im:w-3.5 im:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Resume
-                            </button>
-                          </Show>
-                          <Show when={email.status === 'failed'}>
+                          <Show when={email.status === 'failed' || email.status === 'paused'}>
                             <button
                               class="im:inline-flex im:items-center im:gap-1 im:px-2 im:py-1 im:text-xs im:text-gray-500 hover:im:text-gray-700 hover:im:bg-gray-100 im:rounded im:transition-colors"
-                              onClick={() => handleRetry(email.id)}
+                              onClick={() => handleResend(email.id)}
                             >
                               <svg class="im:w-3.5 im:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                               </svg>
-                              Retry
+                              Resend
                             </button>
                           </Show>
                         </div>
@@ -583,28 +511,17 @@ export default function Emails() {
                 <span class={`im:inline-flex im:items-center im:px-2.5 im:py-1 im:rounded-md im:text-xs im:font-medium im:border ${getStatusBadge(selectedEmail().status)}`}>
                   {selectedEmail().status}
                 </span>
-                <Show when={selectedEmail().priority}>
+                <Show when={selectedEmail().provider}>
                   <span class="im:text-xs im:text-gray-500 im:px-2 im:py-1 im:bg-white im:border im:border-gray-200 im:rounded-md">
-                    Priority: {selectedEmail().priority}
+                    {selectedEmail().provider}
                   </span>
                 </Show>
-                <span class="im:text-xs im:text-gray-400">
-                  {selectedEmail().send_mode === 'direct' ? 'Direct' : 'Queue'}
-                </span>
-                <Show when={selectedEmail().status === 'failed'}>
+                <Show when={selectedEmail().status === 'failed' || selectedEmail().status === 'paused'}>
                   <button
                     class="im:ml-auto im:px-3 im:py-1 im:text-xs im:font-medium im:text-white im:bg-red-600 im:rounded hover:im:bg-red-700 im:transition-colors"
-                    onClick={() => handleRetry(selectedEmail().id)}
+                    onClick={() => handleResend(selectedEmail().id)}
                   >
-                    Retry
-                  </button>
-                </Show>
-                <Show when={selectedEmail().status === 'pending' || selectedEmail().status === 'paused'}>
-                  <button
-                    class="im:ml-auto im:px-3 im:py-1 im:text-xs im:font-medium im:text-white im:bg-blue-600 im:rounded hover:im:bg-blue-700 im:transition-colors"
-                    onClick={() => handleRetry(selectedEmail().id)}
-                  >
-                    Send Now
+                    Resend
                   </button>
                 </Show>
               </div>
@@ -670,12 +587,12 @@ export default function Emails() {
                         <div class="im:text-sm im:text-gray-900">{selectedEmail().id}</div>
                       </div>
                       <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Send Mode</label>
-                        <div class="im:text-sm im:text-gray-900">{selectedEmail().send_mode === 'direct' ? 'Direct' : 'Queue'}</div>
+                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Provider</label>
+                        <div class="im:text-sm im:text-gray-900">{selectedEmail().provider || '-'}</div>
                       </div>
                       <div>
-                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Attempts</label>
-                        <div class="im:text-sm im:text-gray-900">{selectedEmail().attempts} / {selectedEmail().max_attempts}</div>
+                        <label class="im:block im:text-xs im:font-medium im:text-gray-500 im:uppercase im:tracking-wider im:mb-1">Status</label>
+                        <div class="im:text-sm im:text-gray-900">{selectedEmail().status}</div>
                       </div>
                     </div>
                     <div class="im:grid im:grid-cols-2 im:gap-4">
@@ -775,15 +692,15 @@ export default function Emails() {
 
               {/* Modal Footer */}
               <div class="im:flex im:items-center im:justify-end im:gap-3 im:px-6 im:py-4 im:border-t im:border-gray-200 im:bg-gray-50">
-                <Show when={selectedEmail().status === 'failed'}>
+                <Show when={selectedEmail().status === 'failed' || selectedEmail().status === 'paused'}>
                   <button
                     class="im:px-4 im:py-2 im:text-sm im:font-medium im:text-gray-700 im:bg-white im:border im:border-gray-300 im:rounded-md hover:im:bg-gray-50 im:transition-colors"
                     onClick={() => {
-                      handleRetry(selectedEmail().id);
+                      handleResend(selectedEmail().id);
                       setSelectedEmail(null);
                     }}
                   >
-                    Retry
+                    Resend
                   </button>
                 </Show>
                 <button

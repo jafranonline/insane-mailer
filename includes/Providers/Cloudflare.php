@@ -348,8 +348,9 @@ class INSANEMAILER_Provider_Cloudflare extends INSANEMAILER_Abstract_Provider {
 	}
 
 	/**
-	 * Normalizes both attachment shapes the plugin produces: a flat list of
-	 * file paths (queue mode) and PHPMailer's getAttachments() rows (direct mode).
+	 * Normalizes both attachment shapes the plugin has produced: a flat list of
+	 * file paths, and PHPMailer's getAttachments() rows from the send path that
+	 * older versions used.
 	 */
 	private function build_attachments( $attachments ) {
 		if ( ! is_array( $attachments ) || empty( $attachments ) ) {

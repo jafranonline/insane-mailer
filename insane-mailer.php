@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Insane Mailer - SMTP, Email Logs & Queue
+ * Plugin Name: Insane Mailer - SMTP, Email Logs & Delivery
  * Plugin URI: https://arraystory.com/insane-mailer
- * Description: Fast, queue-powered SMTP and email delivery. Send through 20+ providers with email logs, retries, and bounce handling.
- * Version: 1.0.0
+ * Description: Fast, reliable SMTP and email delivery. Send through 20+ providers with complete email logs and bounce handling.
+ * Version: 1.1.0
  * Author: Jafran Hasan
  * Author URI: https://jaf.run
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'INSANEMAILER_VERSION', '1.0.0' );
+define( 'INSANEMAILER_VERSION', '1.1.0' );
 define( 'INSANEMAILER_PLUGIN_FILE', __FILE__ );
 define( 'INSANEMAILER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'INSANEMAILER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -56,16 +56,20 @@ function insanemailer_plugin_action_links( array $links ): array {
  */
 function insanemailer_init() {
 	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Mailer.php';
-	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Queue.php';
-	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Cron.php';
+	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Cleanup.php';
 	require_once INSANEMAILER_PLUGIN_DIR . 'includes/Admin.php';
 
 	insanemailer_maybe_upgrade();
 
 	INSANEMAILER_Mailer::instance();
-	INSANEMAILER_Queue::instance();
-	INSANEMAILER_Cron::instance();
+	INSANEMAILER_Cleanup::instance();
 	INSANEMAILER_Admin::instance();
+
+	// Only loaded while emails left over from queue mode are still being drained.
+	if ( get_option( 'insanemailer_queue_drain_pending' ) ) {
+		require_once INSANEMAILER_PLUGIN_DIR . 'includes/QueueDrain.php';
+		INSANEMAILER_Queue_Drain::instance();
+	}
 }
 add_action( 'plugins_loaded', 'insanemailer_init' );
 

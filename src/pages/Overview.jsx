@@ -64,15 +64,6 @@ export default function Overview(props) {
     return providers[settings().provider] || settings().provider || 'Not configured';
   };
 
-  const getQueueRunnerName = () => {
-    const runners = {
-      wp_cron: 'WP Cron',
-      external_cron: 'External Cron',
-      action_scheduler: 'Action Scheduler',
-    };
-    return runners[settings().queue_runner] || 'WP Cron';
-  };
-
   return (
     <div class="im:space-y-6">
       {/* Stats Cards */}
@@ -90,9 +81,9 @@ export default function Overview(props) {
           </div>
         </div>
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">
-          <div class="im:text-sm im:text-gray-500 im:mb-1">Pending</div>
+          <div class="im:text-sm im:text-gray-500 im:mb-1">Bounced</div>
           <div class="im:text-2xl im:font-semibold im:text-amber-600">
-            {loading() ? '...' : stats()?.pending || 0}
+            {loading() ? '...' : stats()?.bounced || 0}
           </div>
         </div>
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">
@@ -142,7 +133,7 @@ export default function Overview(props) {
           </div>
         </div>
 
-        {/* Queue Settings */}
+        {/* Sending */}
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5 im:relative">
           <button
             onClick={() => props.onSwitchTab('advanced')}
@@ -153,29 +144,22 @@ export default function Overview(props) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
-          <h3 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4">Queue Settings</h3>
+          <h3 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4">Sending</h3>
           <div class="im:space-y-3">
             <div class="im:flex im:items-center im:justify-between">
-              <span class="im:text-sm im:text-gray-500">Send Mode</span>
-              <span class="im:text-sm im:font-medium im:text-gray-900 im:capitalize">{settings().send_mode || 'queue'}</span>
+              <span class="im:text-sm im:text-gray-500">Delivery</span>
+              <span class="im:text-sm im:font-medium im:text-gray-900">Immediate</span>
             </div>
-            <Show when={settings().send_mode !== 'direct'}>
-              <div class="im:flex im:items-center im:justify-between">
-                <span class="im:text-sm im:text-gray-500">Queue Runner</span>
-                <span class="im:text-sm im:font-medium im:text-gray-900">{getQueueRunnerName()}</span>
-              </div>
-              <div class="im:flex im:items-center im:justify-between">
-                <span class="im:text-sm im:text-gray-500">Batch Size</span>
-                <span class="im:text-sm im:font-medium im:text-gray-900">{settings().batch_size || 10} emails</span>
-              </div>
-              <div class="im:flex im:items-center im:justify-between">
-                <span class="im:text-sm im:text-gray-500">Rate Limit</span>
-                <span class="im:text-sm im:font-medium im:text-gray-900">{settings().rate_limit || 100} / hour</span>
-              </div>
-            </Show>
-            <Show when={settings().send_mode === 'direct'}>
-              <p class="im:text-sm im:text-gray-500">Emails are sent immediately without queuing.</p>
-            </Show>
+            <div class="im:flex im:items-center im:justify-between">
+              <span class="im:text-sm im:text-gray-500">Plain Text Fallback</span>
+              <span class="im:text-sm im:font-medium im:text-gray-900">{settings().auto_plain_text ? 'On' : 'Off'}</span>
+            </div>
+            <div class="im:flex im:items-center im:justify-between">
+              <span class="im:text-sm im:text-gray-500">Log Retention</span>
+              <span class="im:text-sm im:font-medium im:text-gray-900">
+                {settings().auto_delete_days > 0 ? `${settings().auto_delete_days} days` : 'Forever'}
+              </span>
+            </div>
             <Show when={settings().pause_sending}>
               <div class="im:flex im:items-center im:gap-2 im:px-2 im:py-1.5 im:bg-red-50 im:rounded-md im:border im:border-red-200">
                 <svg class="im:w-4 im:h-4 im:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

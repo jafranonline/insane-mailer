@@ -54,15 +54,7 @@ export const api = {
 
   getEmail: (id) => request(`/emails/${id}`),
 
-  retryEmail: (id) => request(`/emails/${id}/retry`, {
-    method: 'POST',
-  }),
-
-  pauseEmail: (id) => request(`/emails/${id}/pause`, {
-    method: 'POST',
-  }),
-
-  resumeEmail: (id) => request(`/emails/${id}/resume`, {
+  resendEmail: (id) => request(`/emails/${id}/resend`, {
     method: 'POST',
   }),
 
@@ -81,22 +73,12 @@ export const api = {
     return request(`/stats/analytics${query ? `?${query}` : ''}`);
   },
 
-  processQueue: () => request('/queue/process', {
-    method: 'POST',
-  }),
-
-  getQueueStatus: () => request('/queue/status'),
-
   exportCsv: (status = '') => {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     params.append('_wpnonce', NONCE);
     window.location.href = `${API_BASE}/export?${params.toString()}`;
   },
-
-  regenerateCronToken: () => request('/settings/regenerate-cron-token', {
-    method: 'POST',
-  }),
 
   getServerInfo: () => request('/server-info'),
 

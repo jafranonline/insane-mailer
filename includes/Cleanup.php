@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class INSANEMAILER_Cron {
+class INSANEMAILER_Cleanup {
 
 	private static $instance = null;
 
@@ -16,43 +16,7 @@ class INSANEMAILER_Cron {
 	}
 
 	private function __construct() {
-		add_filter( 'cron_schedules', [ $this, 'add_cron_schedules' ] );
-		add_action( 'insanemailer_process_queue', [ $this, 'process_queue' ] );
 		add_action( 'insanemailer_cleanup_old_emails', [ $this, 'cleanup_old_emails' ] );
-	}
-
-	public function add_cron_schedules( $schedules ) {
-		$schedules['every_minute'] = [
-			'interval' => 60,
-			'display'  => __( 'Every Minute', 'insane-mailer' ),
-		];
-
-		$schedules['every_5_minutes'] = [
-			'interval' => 5 * 60,
-			'display'  => __( 'Every 5 Minutes', 'insane-mailer' ),
-		];
-
-		$schedules['every_15_minutes'] = [
-			'interval' => 15 * 60,
-			'display'  => __( 'Every 15 Minutes', 'insane-mailer' ),
-		];
-
-		$schedules['every_30_minutes'] = [
-			'interval' => 30 * 60,
-			'display'  => __( 'Every 30 Minutes', 'insane-mailer' ),
-		];
-
-		return $schedules;
-	}
-
-	public function process_queue() {
-		$settings = get_option( 'insanemailer_settings', [] );
-
-		if ( 'wp_cron' !== ( $settings['queue_runner'] ?? 'wp_cron' ) ) {
-			return;
-		}
-
-		INSANEMAILER_Queue::instance()->process();
 	}
 
 	public function cleanup_old_emails() {
@@ -73,7 +37,7 @@ class INSANEMAILER_Cron {
 		$email_ids = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT id FROM %i
-				WHERE status IN ('sent', 'failed', 'bounced', 'complained')
+				WHERE status IN ('sent', 'failed', 'bounced', 'complained', 'paused', 'sending')
 				AND created_at < %s",
 				$table_name,
 				$cutoff_date
@@ -92,7 +56,7 @@ class INSANEMAILER_Cron {
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM %i
-				WHERE status IN ('sent', 'failed', 'bounced', 'complained')
+				WHERE status IN ('sent', 'failed', 'bounced', 'complained', 'paused', 'sending')
 				AND created_at < %s",
 				$table_name,
 				$cutoff_date

@@ -177,16 +177,9 @@ class INSANEMAILER_Admin {
 			'from_name'        => get_option( 'blogname' ),
 			'reply_to'         => '',
 			'force_from'       => true,
-			'send_mode'        => 'direct',
 			'auto_plain_text'  => true,
-			'queue_runner'     => 'wp_cron',
-			'cron_token'       => '',
-			'bulk_limit'       => 50,
-			'rate_limit'       => 14,
-			'max_retries'      => 3,
-			'retry_delay'      => 300,
-			'priority_bypass'  => [],
 			'auto_delete_days' => 14,
+			'pause_sending'    => false,
 			'setup_completed'  => false,
 		];
 
@@ -207,7 +200,6 @@ class INSANEMAILER_Admin {
 		$controllers = [
 			'Settings',
 			'Emails',
-			'Queue',
 			'Webhook',
 			'Migration',
 			'Stats',

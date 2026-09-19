@@ -48,16 +48,6 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 
 		register_rest_route(
 			$this->namespace,
-			'/settings/regenerate-cron-token',
-			[
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => [ $this, 'regenerate_cron_token' ],
-				'permission_callback' => [ $this, 'permission_check' ],
-			]
-		);
-
-		register_rest_route(
-			$this->namespace,
 			'/server-info',
 			[
 				'methods'             => WP_REST_Server::READABLE,
@@ -133,21 +123,14 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 
 	public function get_settings( $request ) {
 		$default_settings = [
-			'provider'           => 'smtp',
-			'credentials'        => [],
-			'from_email'         => get_option( 'admin_email' ),
-			'from_name'          => get_option( 'blogname' ),
-			'force_from'         => true,
-			'send_mode'          => 'direct',
-			'auto_plain_text'    => true,
-			'queue_runner'       => 'wp_cron',
-			'cron_token'         => '',
-			'bulk_limit'         => 50,
-			'rate_limit'         => 14,
-			'max_retries'        => 3,
-			'retry_delay'        => 300,
-			'priority_bypass'    => [],
-			'auto_delete_days'   => 14,
+			'provider'         => 'smtp',
+			'credentials'      => [],
+			'from_email'       => get_option( 'admin_email' ),
+			'from_name'        => get_option( 'blogname' ),
+			'force_from'       => true,
+			'auto_plain_text'  => true,
+			'auto_delete_days' => 14,
+			'pause_sending'    => false,
 		];
 
 		$settings = get_option( 'insanemailer_settings', $default_settings );
@@ -236,8 +219,6 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 
 		update_option( 'insanemailer_settings', $new_settings );
 
-		$this->maybe_reschedule_cron( $current_settings, $new_settings );
-
 		return $this->success_response(
 			[
 				'message'          => 'Settings saved',
@@ -245,26 +226,6 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 				'connection_valid' => true,
 			]
 		);
-	}
-
-	private function maybe_reschedule_cron( $old_settings, $new_settings ) {
-		$old_interval = $old_settings['cron_interval'] ?? 'every_minute';
-		$new_interval = $new_settings['cron_interval'] ?? 'every_minute';
-		$old_runner   = $old_settings['queue_runner'] ?? 'wp_cron';
-		$new_runner   = $new_settings['queue_runner'] ?? 'wp_cron';
-
-		if ( $old_interval === $new_interval && $old_runner === $new_runner ) {
-			return;
-		}
-
-		$timestamp = wp_next_scheduled( 'insanemailer_process_queue' );
-		if ( $timestamp ) {
-			wp_unschedule_event( $timestamp, 'insanemailer_process_queue' );
-		}
-
-		if ( 'wp_cron' === $new_runner ) {
-			wp_schedule_event( time(), $new_interval, 'insanemailer_process_queue' );
-		}
 	}
 
 	public function test_connection( $request ) {
@@ -467,16 +428,6 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 		return $this->error_response( $error_msg );
 	}
 
-	public function regenerate_cron_token( $request ) {
-		$token    = wp_generate_password( 32, false );
-		$settings = get_option( 'insanemailer_settings', [] );
-
-		$settings['cron_token'] = $token;
-		update_option( 'insanemailer_settings', $settings );
-
-		return $this->success_response( [ 'token' => $token ] );
-	}
-
 	public function get_server_info( $request ) {
 		$disabled_functions = ini_get( 'disable_functions' );
 		$mail_enabled       = function_exists( 'mail' ) && stripos( $disabled_functions, 'mail' ) === false;
@@ -623,19 +574,9 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 			'from_email',
 			'from_name',
 			'force_from',
-			'send_mode',
 			'auto_plain_text',
-			'queue_runner',
-			'cron_token',
-			'cron_interval',
-			'bulk_limit',
-			'rate_limit',
-			'max_retries',
-			'retry_delay',
-			'priority_bypass',
 			'auto_delete_days',
 			'pause_sending',
-			'priority_express',
 		];
 
 		$sanitized = [];
@@ -663,24 +604,14 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 
 	public function reset_settings( $request ) {
 		$defaults = [
-			'provider'           => 'smtp',
-			'credentials'        => [],
-			'from_email'         => get_option( 'admin_email' ),
-			'from_name'          => get_option( 'blogname' ),
-			'force_from'         => true,
-			'send_mode'          => 'direct',
-			'auto_plain_text'    => true,
-			'queue_runner'       => 'wp_cron',
-			'cron_token'         => '',
-			'cron_interval'      => 'every_minute',
-			'bulk_limit'         => 50,
-			'rate_limit'         => 14,
-			'max_retries'        => 3,
-			'retry_delay'        => 300,
-			'priority_bypass'    => [],
-			'auto_delete_days'   => 14,
-			'pause_sending'      => false,
-			'priority_express'   => false,
+			'provider'         => 'smtp',
+			'credentials'      => [],
+			'from_email'       => get_option( 'admin_email' ),
+			'from_name'        => get_option( 'blogname' ),
+			'force_from'       => true,
+			'auto_plain_text'  => true,
+			'auto_delete_days' => 14,
+			'pause_sending'    => false,
 		];
 
 		update_option( 'insanemailer_settings', $defaults );

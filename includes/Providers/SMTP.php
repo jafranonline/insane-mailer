@@ -37,15 +37,22 @@ class INSANEMAILER_Provider_SMTP extends INSANEMAILER_Abstract_Provider {
 				$mail->addReplyTo( $mail_data['reply_to'] );
 			}
 
+			$is_html = ! empty( $mail_data['body_html'] );
+
 			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
 			$mail->Subject = $mail_data['subject'];
-			$mail->Body    = $mail_data['body_html'];
-			$mail->AltBody = $mail_data['body_plain'] ?? '';
-			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
-			if ( ! empty( $mail_data['body_html'] ) ) {
+			// A plain-text message has no HTML body, and PHPMailer rejects an
+			// empty Body outright with "Message body empty".
+			if ( $is_html ) {
 				$mail->isHTML( true );
+				$mail->Body    = $mail_data['body_html'];
+				$mail->AltBody = $mail_data['body_plain'] ?? '';
+			} else {
+				$mail->isHTML( false );
+				$mail->Body = $mail_data['body_plain'] ?? '';
 			}
+			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			if ( ! empty( $mail_data['attachments'] ) ) {
 				foreach ( $mail_data['attachments'] as $attachment ) {

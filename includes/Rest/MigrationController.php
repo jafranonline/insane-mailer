@@ -218,17 +218,10 @@ class INSANEMAILER_Rest_Migration_Controller extends INSANEMAILER_Rest_Controlle
 		$current_settings = get_option( 'insanemailer_settings', [] );
 		$merged_settings = array_merge( $current_settings, $new_settings );
 
-		// Preserve queue/advanced settings that shouldn't be overwritten
+		// Preserve local settings that an import shouldn't overwrite
 		$preserve_keys = [
-			'send_mode',
-			'queue_runner',
-			'cron_token',
-			'bulk_limit',
-			'rate_limit',
-			'max_retries',
-			'retry_delay',
-			'priority_bypass',
 			'auto_delete_days',
+			'pause_sending',
 		];
 
 		foreach ( $preserve_keys as $key ) {

@@ -1,6 +1,4 @@
-import { createSignal, Show, For, onMount } from 'solid-js';
-import { api } from '../api/client';
-import { toast } from '../components/Toast';
+import { createSignal, Show, For } from 'solid-js';
 
 const mainTabs = [
   { id: 'configuration', label: 'Configuration', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
@@ -28,11 +26,11 @@ const providerDocs = {
       'Set your From Email and From Name in Sender Details',
       'Optionally enable "Force From Address" to override all outgoing emails',
       'Click "Save Settings" and test your connection',
-      'Configure Queue Runner in Advanced settings (external cron recommended)',
+      'Send a test email from the Provider tab to confirm delivery',
     ],
     tips: [
       'Use a verified domain email address as your From Email',
-      'Default Queue Runner is WP-Cron, but external cron is recommended for reliability',
+      'Every email is sent the moment WordPress asks for it, and logged either way',
       'Test your configuration by sending a test email before going live',
     ],
   },
@@ -205,20 +203,19 @@ const troubleshootingItems = [
     ],
   },
   {
-    title: 'Queue not processing',
+    title: 'Emails logged but never delivered',
     solutions: [
-      'Default is WP-Cron which depends on site traffic - switch to external cron for reliability',
-      'Verify queue processing is enabled in Advanced settings',
-      'If using WP-Cron, check if DISABLE_WP_CRON is set in wp-config.php',
+      'Check whether Pause Sending is switched on in Settings - it logs without delivering',
+      'Open the log entry and read the error message and provider response',
+      'Re-run Test Connection; expired or rotated credentials fail silently at send time',
       'Check server error logs for PHP errors',
     ],
   },
   {
     title: 'Rate limiting errors',
     solutions: [
-      'Reduce emails per batch in Advanced settings',
-      'Increase the processing interval',
       'Check your provider\'s rate limits and quotas',
+      'Space out bulk sends from whatever plugin is generating them',
       'Consider upgrading your provider plan if needed',
     ],
   },
@@ -258,29 +255,6 @@ const debugInfo = [
 export default function Docs() {
   const [activeTab, setActiveTab] = createSignal('configuration');
   const [activeProvider, setActiveProvider] = createSignal('basic');
-  const [cronToken, setCronToken] = createSignal(window.insaneMailerAdmin?.settings?.cron_token || '');
-  const [regenerating, setRegenerating] = createSignal(false);
-
-  const siteUrl = window.insaneMailerAdmin?.siteUrl || window.location.origin;
-  const cronEndpoint = () => `${siteUrl}/wp-json/insane-mailer/v1/cron?token=${cronToken()}`;
-
-  const handleRegenerateToken = async () => {
-    setRegenerating(true);
-    try {
-      const response = await api.regenerateCronToken();
-      setCronToken(response.data.token);
-      toast.success('Cron token regenerated');
-    } catch (error) {
-      toast.error('Failed to regenerate token');
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
-  const handleCopyEndpoint = () => {
-    navigator.clipboard.writeText(cronEndpoint());
-    toast.success('Endpoint copied to clipboard');
-  };
 
   return (
     <div>
@@ -441,41 +415,6 @@ export default function Docs() {
       {/* Debug Tab */}
       <Show when={activeTab() === 'debug'}>
         <div class="im:space-y-4">
-          {/* Queue Runner Setup - Interactive */}
-          <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">
-            <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-2">External Cron Setup</h3>
-            <p class="im:text-sm im:text-gray-600 im:mb-4">
-              Default is WP-Cron (triggered by site visits). For reliable queue processing, switch to External Cron in Advanced settings and use this endpoint:
-            </p>
-            <div class="im:bg-gray-900 im:rounded-md im:p-3 im:mb-3">
-              <code class="im:text-xs im:text-gray-100 im:font-mono im:break-all">{cronEndpoint()}</code>
-            </div>
-            <div class="im:flex im:gap-2">
-              <button
-                class="im:flex im:items-center im:gap-1.5 im:px-3 im:py-1.5 im:text-sm im:font-medium im:bg-gray-100 im:text-gray-700 im:rounded-md hover:im:bg-gray-200 im:transition-colors"
-                onClick={handleCopyEndpoint}
-              >
-                <svg class="im:w-4 im:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy Endpoint
-              </button>
-              <button
-                class="im:flex im:items-center im:gap-1.5 im:px-3 im:py-1.5 im:text-sm im:font-medium im:bg-amber-100 im:text-amber-700 im:rounded-md hover:im:bg-amber-200 im:transition-colors disabled:im:opacity-50"
-                onClick={handleRegenerateToken}
-                disabled={regenerating()}
-              >
-                <svg class="im:w-4 im:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {regenerating() ? 'Regenerating...' : 'Regenerate Token'}
-              </button>
-            </div>
-            <p class="im:text-xs im:text-gray-500 im:mt-3">
-              Add to server crontab: <code class="im:bg-gray-100 im:px-1 im:rounded">*/5 * * * * wget -q -O - "{cronEndpoint()}" {'>'}/dev/null 2{'>'}&1</code>
-            </p>
-          </div>
-
           <For each={debugInfo}>
             {(item) => (
               <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5">

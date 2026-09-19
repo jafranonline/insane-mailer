@@ -199,7 +199,6 @@ const providerFields = {
 // 'provider' - Choose provider (manual flow)
 // 'credentials' - Enter credentials (manual flow)
 // 'sender' - Sender details
-// 'mode' - Send mode
 // 'complete' - Done
 
 export default function Setup({ onComplete }) {
@@ -212,7 +211,6 @@ export default function Setup({ onComplete }) {
     from_name: globalSettings()?.from_name || '',
     from_email: globalSettings()?.from_email || '',
     force_from: globalSettings()?.force_from ?? true,
-    send_mode: globalSettings()?.send_mode || 'direct',
   });
 
   const [migrations, setMigrations] = createSignal([]);
@@ -302,8 +300,6 @@ export default function Setup({ onComplete }) {
         setSettings((prev) => ({
           ...prev,
           ...imported,
-          // Ensure send_mode has a default if not imported
-          send_mode: imported.send_mode || prev.send_mode,
         }));
         updateGlobalSettings(response.data.settings);
       }
@@ -405,21 +401,19 @@ export default function Setup({ onComplete }) {
       if (s === 'import-preview') return 1;
       if (s === 'deactivate') return 2;
       if (s === 'sender') return 3;
-      if (s === 'mode') return 4;
-      return 4;
+      return 3;
     } else {
       if (s === 'choose') return 1;
       if (s === 'provider') return 1;
       if (s === 'credentials') return 2;
       if (s === 'sender') return settings().provider === 'default' ? 2 : 3;
-      if (s === 'mode') return settings().provider === 'default' ? 3 : 4;
-      return 4;
+      return 3;
     }
   };
 
   const getTotalSteps = () => {
-    if (selectedPlugin()) return 4;
-    return settings().provider === 'default' ? 3 : 4;
+    if (selectedPlugin()) return 3;
+    return settings().provider === 'default' ? 2 : 3;
   };
 
   return (
@@ -1009,7 +1003,7 @@ export default function Setup({ onComplete }) {
 
           {/* Steim: Sender Details */}
           <Show when={step() === 'sender'}>
-            <form class="im:p-8" onSubmit={(e) => { e.preventDefault(); setStep('mode'); }}>
+            <form class="im:p-8" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
               <h2 class="im:text-lg im:font-semibold im:text-gray-900 im:mb-1">Sender Details</h2>
               <p class="im:text-sm im:text-gray-600 im:mb-6">Configure the "From" address for your emails</p>
 
@@ -1061,84 +1055,6 @@ export default function Setup({ onComplete }) {
                       setStep('provider');
                     }
                   }}
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  class="im:px-6 im:py-2.5 im:bg-gray-900 im:text-white im:font-medium im:rounded-lg hover:im:bg-gray-800 im:transition-colors"
-                >
-                  Continue
-                </button>
-              </div>
-            </form>
-          </Show>
-
-          {/* Steim: Send Mode */}
-          <Show when={step() === 'mode'}>
-            <form class="im:p-8" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-              <h2 class="im:text-lg im:font-semibold im:text-gray-900 im:mb-1">Send Mode</h2>
-              <p class="im:text-sm im:text-gray-600 im:mb-6">Choose how emails should be sent</p>
-
-              <div class="im:space-y-3 im:mb-6">
-                <button
-                  type="button"
-                  class={`im:w-full im:p-4 im:rounded-lg im:border-2 im:text-left im:transition-colors ${
-                    settings().send_mode === 'queue'
-                      ? 'im:border-gray-900 im:bg-gray-50'
-                      : 'im:border-gray-200 hover:im:border-gray-300'
-                  }`}
-                  onClick={() => updateSetting('send_mode', 'queue')}
-                >
-                  <div class="im:flex im:items-start im:gap-3">
-                    <div class={`im:w-5 im:h-5 im:rounded-full im:border-2 im:flex im:items-center im:justify-center im:mt-0.5 ${
-                      settings().send_mode === 'queue' ? 'im:border-gray-900' : 'im:border-gray-300'
-                    }`}>
-                      <Show when={settings().send_mode === 'queue'}>
-                        <div class="im:w-2.5 im:h-2.5 im:rounded-full im:bg-gray-900" />
-                      </Show>
-                    </div>
-                    <div>
-                      <div class="im:font-medium im:text-gray-900">Queue (Recommended)</div>
-                      <p class="im:text-sm im:text-gray-500 im:mt-1">
-                        Emails are queued and sent in the background. More reliable and prevents timeouts.
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  class={`im:w-full im:p-4 im:rounded-lg im:border-2 im:text-left im:transition-colors ${
-                    settings().send_mode === 'direct'
-                      ? 'im:border-gray-900 im:bg-gray-50'
-                      : 'im:border-gray-200 hover:im:border-gray-300'
-                  }`}
-                  onClick={() => updateSetting('send_mode', 'direct')}
-                >
-                  <div class="im:flex im:items-start im:gap-3">
-                    <div class={`im:w-5 im:h-5 im:rounded-full im:border-2 im:flex im:items-center im:justify-center im:mt-0.5 ${
-                      settings().send_mode === 'direct' ? 'im:border-gray-900' : 'im:border-gray-300'
-                    }`}>
-                      <Show when={settings().send_mode === 'direct'}>
-                        <div class="im:w-2.5 im:h-2.5 im:rounded-full im:bg-gray-900" />
-                      </Show>
-                    </div>
-                    <div>
-                      <div class="im:font-medium im:text-gray-900">Direct</div>
-                      <p class="im:text-sm im:text-gray-500 im:mt-1">
-                        Emails are sent immediately. Faster but may timeout on large emails.
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              <div class="im:flex im:justify-between">
-                <button
-                  type="button"
-                  class="im:px-4 im:py-2.5 im:text-gray-700 im:font-medium im:rounded-lg hover:im:bg-gray-100 im:transition-colors"
-                  onClick={() => setStep('sender')}
                 >
                   Back
                 </button>

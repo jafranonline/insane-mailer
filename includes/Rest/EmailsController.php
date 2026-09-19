@@ -31,30 +31,10 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'/emails/(?P<id>\d+)/retry',
+			'/emails/(?P<id>\d+)/resend',
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => [ $this, 'retry_email' ],
-				'permission_callback' => [ $this, 'permission_check' ],
-			]
-		);
-
-		register_rest_route(
-			$this->namespace,
-			'/emails/(?P<id>\d+)/pause',
-			[
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => [ $this, 'pause_email' ],
-				'permission_callback' => [ $this, 'permission_check' ],
-			]
-		);
-
-		register_rest_route(
-			$this->namespace,
-			'/emails/(?P<id>\d+)/resume',
-			[
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => [ $this, 'resume_email' ],
+				'callback'            => [ $this, 'resend_email' ],
 				'permission_callback' => [ $this, 'permission_check' ],
 			]
 		);
@@ -109,7 +89,6 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 		$per_page  = $request->get_param( 'per_page' ) ?? 20;
 		$status    = $request->get_param( 'status' ) ?? '';
 		$search    = $request->get_param( 'search' ) ?? '';
-		$send_mode = $request->get_param( 'send_mode' ) ?? '';
 
 		$offset = ( $page - 1 ) * $per_page;
 
@@ -119,11 +98,6 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 		if ( ! empty( $status ) ) {
 			$where[] = 'status = %s';
 			$args[]  = $status;
-		}
-
-		if ( ! empty( $send_mode ) ) {
-			$where[] = 'send_mode = %s';
-			$args[]  = $send_mode;
 		}
 
 		if ( ! empty( $search ) ) {
@@ -181,24 +155,13 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 		return $this->success_response( $email );
 	}
 
-	public function retry_email( $request ) {
-		$email_id = $request->get_param( 'id' );
-
-		$result = INSANEMAILER_Queue::instance()->retry_email( $email_id );
-
-		if ( $result ) {
-			return $this->success_response(
-				[
-					'message' => 'Email queued for retry',
-					'id'      => $email_id,
-				]
-			);
-		}
-
-		return $this->error_response( 'Failed to retry email' );
-	}
-
-	public function pause_email( $request ) {
+	/**
+	 * Send a logged message again, in place.
+	 *
+	 * The row keeps its id and history; only its status, timestamps and provider
+	 * response are rewritten with the result of the new attempt.
+	 */
+	public function resend_email( $request ) {
 		global $wpdb;
 
 		$email_id   = $request->get_param( 'id' );
@@ -213,73 +176,26 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 			return $this->error_response( 'Email not found', 404 );
 		}
 
-		if ( 'pending' !== $email->status ) {
-			return $this->error_response( 'Only pending emails can be paused' );
-		}
+		$result = INSANEMAILER_Mailer::instance()->send_logged_email( $email );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
-		$updated = $wpdb->update(
-			$table_name,
-			[ 'status' => 'paused' ],
-			[ 'id' => $email_id ],
-			[ '%s' ],
-			[ '%d' ]
-		);
-
-		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
-
-		if ( false !== $updated ) {
-			return $this->success_response(
+		if ( empty( $result['success'] ) ) {
+			return $this->error_response(
+				$result['error'] ?? 'Failed to resend email',
+				400,
 				[
-					'message' => 'Email paused',
-					'id'      => $email_id,
+					'id'     => (int) $email_id,
+					'status' => 'failed',
 				]
 			);
 		}
 
-		return $this->error_response( 'Failed to pause email' );
-	}
-
-	public function resume_email( $request ) {
-		global $wpdb;
-
-		$email_id   = $request->get_param( 'id' );
-		$table_name = $wpdb->prefix . 'insanemailer_emails';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, single record.
-		$email = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $table_name, $email_id )
+		return $this->success_response(
+			[
+				'message' => 'Email resent',
+				'id'      => (int) $email_id,
+				'status'  => 'sent',
+			]
 		);
-
-		if ( ! $email ) {
-			return $this->error_response( 'Email not found', 404 );
-		}
-
-		if ( 'paused' !== $email->status ) {
-			return $this->error_response( 'Only paused emails can be resumed' );
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
-		$updated = $wpdb->update(
-			$table_name,
-			[ 'status' => 'pending' ],
-			[ 'id' => $email_id ],
-			[ '%s' ],
-			[ '%d' ]
-		);
-
-		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
-
-		if ( false !== $updated ) {
-			return $this->success_response(
-				[
-					'message' => 'Email resumed',
-					'id'      => $email_id,
-				]
-			);
-		}
-
-		return $this->error_response( 'Failed to resume email' );
 	}
 
 	public function delete_email( $request ) {
@@ -388,7 +304,7 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 	}
 
 	public function get_stats( $request ) {
-		$stats = INSANEMAILER_Queue::instance()->get_stats();
+		$stats = $this->get_status_counts();
 
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'insanemailer_emails';
@@ -416,6 +332,40 @@ class INSANEMAILER_Rest_Emails_Controller extends INSANEMAILER_Rest_Controller {
 				'daily_stats'   => $daily_stats,
 			]
 		);
+	}
+
+	/**
+	 * Count log rows by status, for the stat cards and the log filters.
+	 */
+	private function get_status_counts() {
+		$cache_key    = 'insanemailer_queue_stats';
+		$stats_result = wp_cache_get( $cache_key, 'insane_mailer' );
+
+		if ( false === $stats_result ) {
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'insanemailer_emails';
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table.
+			$stats_result = $wpdb->get_results(
+				$wpdb->prepare( 'SELECT status, COUNT(*) as count FROM %i GROUP BY status', $table_name ),
+				OBJECT_K
+			);
+
+			wp_cache_set( $cache_key, $stats_result, 'insane_mailer', 60 );
+		}
+
+		$stats = [];
+		$total = 0;
+
+		foreach ( [ 'sending', 'sent', 'failed', 'paused', 'bounced', 'complained' ] as $status ) {
+			$count           = isset( $stats_result[ $status ] ) ? (int) $stats_result[ $status ]->count : 0;
+			$stats[ $status ] = $count;
+			$total          += $count;
+		}
+
+		$stats['total'] = $total;
+
+		return $stats;
 	}
 
 	private function delete_email_attachments( $email_id ) {

@@ -81,7 +81,6 @@ class INSANEMAILER_Rest_Stats_Controller extends INSANEMAILER_Rest_Controller {
 			'summary'    => [
 				'total'          => (int) $summary['total'],
 				'sent'           => (int) $summary['sent'],
-				'pending'        => (int) $summary['pending'],
 				'failed'         => (int) $summary['failed'],
 				'bounced'        => (int) $summary['bounced'],
 				'complained'     => (int) $summary['complained'],
@@ -122,8 +121,7 @@ class INSANEMAILER_Rest_Stats_Controller extends INSANEMAILER_Rest_Controller {
 		return [
 			'total'      => array_sum( array_column( (array) $results, 'count' ) ),
 			'sent'       => isset( $results['sent'] ) ? (int) $results['sent']->count : 0,
-			'pending'    => isset( $results['pending'] ) ? (int) $results['pending']->count : 0,
-			'processing' => isset( $results['processing'] ) ? (int) $results['processing']->count : 0,
+			'sending'    => isset( $results['sending'] ) ? (int) $results['sending']->count : 0,
 			'failed'     => isset( $results['failed'] ) ? (int) $results['failed']->count : 0,
 			'bounced'    => isset( $results['bounced'] ) ? (int) $results['bounced']->count : 0,
 			'complained' => isset( $results['complained'] ) ? (int) $results['complained']->count : 0,
@@ -221,8 +219,7 @@ class INSANEMAILER_Rest_Stats_Controller extends INSANEMAILER_Rest_Controller {
 
 		return [
 			'sent'       => isset( $results['sent'] ) ? (int) $results['sent']->count : 0,
-			'pending'    => isset( $results['pending'] ) ? (int) $results['pending']->count : 0,
-			'processing' => isset( $results['processing'] ) ? (int) $results['processing']->count : 0,
+			'sending'    => isset( $results['sending'] ) ? (int) $results['sending']->count : 0,
 			'failed'     => isset( $results['failed'] ) ? (int) $results['failed']->count : 0,
 			'bounced'    => isset( $results['bounced'] ) ? (int) $results['bounced']->count : 0,
 			'complained' => isset( $results['complained'] ) ? (int) $results['complained']->count : 0,

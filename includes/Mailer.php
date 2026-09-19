@@ -8,8 +8,17 @@ class INSANEMAILER_Mailer {
 
 	private static $instance = null;
 	private $settings;
-	private $is_queued = false;
-	private $current_direct_email_id = null;
+	private $current_email_id = null;
+
+	/**
+	 * Whether the outcome of the message in flight has already been written to
+	 * its log row. Guards the wp_mail_succeeded / wp_mail_failed listeners,
+	 * which would otherwise overwrite a provider result — and re-enter on the
+	 * wp_mail_failed we fire ourselves.
+	 *
+	 * @var bool
+	 */
+	private $result_recorded = false;
 
 	public static function instance() {
 		if ( null === self::$instance ) {
@@ -20,19 +29,20 @@ class INSANEMAILER_Mailer {
 
 	private function __construct() {
 		$this->settings = get_option( 'insanemailer_settings', [] );
-		add_action( 'phpmailer_init', [ $this, 'intercept_phpmailer' ], 999 );
-		add_filter( 'pre_wp_mail', [ $this, 'maybe_queue_mail' ], 10, 2 );
+		add_filter( 'pre_wp_mail', [ $this, 'handle_mail' ], 10, 2 );
 		add_filter( 'wp_mail_from', [ $this, 'filter_from_email' ], 99 );
 		add_filter( 'wp_mail_from_name', [ $this, 'filter_from_name' ], 99 );
+		add_action( 'wp_mail_succeeded', [ $this, 'handle_wp_mail_succeeded' ] );
+		add_action( 'wp_mail_failed', [ $this, 'handle_wp_mail_failed' ] );
 	}
 
 	/**
 	 * Apply the configured sender before PHPMailer validates it.
 	 *
 	 * WordPress calls setFrom() before phpmailer_init fires, so overriding the
-	 * sender only in send_direct() is too late: the default wordpress@<host> is
-	 * rejected outright on hosts without a dot (localhost), failing the send
-	 * before any provider is reached.
+	 * sender any later is too late: the default wordpress@<host> is rejected
+	 * outright on hosts without a dot (localhost), failing the send before any
+	 * provider is reached.
 	 */
 	public function filter_from_email( $from_email ) {
 		$configured = $this->settings['from_email'] ?? '';
@@ -81,73 +91,89 @@ class INSANEMAILER_Mailer {
 		return $from_email === $default;
 	}
 
-	public function maybe_queue_mail( $null, $atts ) {
-		$send_mode = $this->settings['send_mode'] ?? 'direct';
+	/**
+	 * Log every wp_mail() message and deliver it through the configured provider.
+	 *
+	 * Only the "default" provider falls through to PHPMailer; everything else,
+	 * custom SMTP included, is delivered by its own provider class and short
+	 * circuits wp_mail(). Letting wp_mail() continue after a provider accepted
+	 * the message would attempt a second delivery and report a false failure.
+	 *
+	 * @param null|bool $null Short-circuit value for pre_wp_mail.
+	 * @param array     $atts wp_mail() arguments.
+	 * @return null|bool Null to let PHPMailer run, or whether the send succeeded.
+	 */
+	public function handle_mail( $null, $atts ) {
+		$this->current_email_id = null;
+		$this->result_recorded  = false;
 
-		// If direct mode, log the email before sending
-		if ( 'direct' === $send_mode || $this->should_bypass_queue() ) {
-			$mail_data = $this->log_direct_email( $atts );
+		$mail_data = $this->log_email( $atts );
 
-			$provider_name = $this->settings['provider'] ?? 'default';
+		if ( ! empty( $this->settings['pause_sending'] ) ) {
+			$this->update_email_status( $this->current_email_id, 'paused' );
+			$this->result_recorded = true;
 
-			/*
-			 * API providers deliver over HTTP, so PHPMailer has no part to play.
-			 * Letting wp_mail() continue would attempt a second delivery over the
-			 * placeholder localhost:25 transport, and its failure would make
-			 * wp_mail() return false for a message the provider already accepted.
-			 */
-			if ( 'default' !== $provider_name && 'smtp' !== $provider_name ) {
-				return $this->send_direct_via_api( $mail_data );
-			}
+			return true;
+		}
 
+		$provider_name = $this->get_provider_slug();
+
+		if ( 'default' === $provider_name ) {
 			return null;
 		}
 
-		// Queue mode: queue the email and return true to short-circuit wp_mail
-		$this->queue_from_atts( $atts );
+		$result = $this->send_via_provider( $provider_name, $mail_data );
+
+		if ( empty( $result['success'] ) ) {
+			return $this->fail_email( $result['error'] ?? 'Unknown error', $result );
+		}
+
+		$this->mark_sent( $this->current_email_id, $result );
+		$this->result_recorded = true;
+
+		do_action( 'insanemailer_email_sent', $this->current_email_id, $result );
+
 		return true;
 	}
 
 	/**
-	 * Deliver a direct-mode email through the configured API provider.
-	 *
-	 * @param array $mail_data Parsed message, as returned by log_direct_email().
-	 * @return bool Whether the provider accepted the message, for pre_wp_mail.
+	 * Close out the log row once PHPMailer handled the message itself.
 	 */
-	private function send_direct_via_api( $mail_data ) {
-		$provider_name  = $this->settings['provider'] ?? 'default';
-		$provider_class = $this->get_provider_class( $provider_name );
-
-		if ( ! $provider_class ) {
-			return $this->fail_direct_email( 'Provider class not found' );
+	public function handle_wp_mail_succeeded( $mail_data ) {
+		if ( ! $this->current_email_id || $this->result_recorded ) {
+			return;
 		}
 
-		try {
-			$provider = new $provider_class( $this->settings['credentials'] ?? [] );
-			$result   = $provider->send_raw( $mail_data );
+		$result = [ 'success' => true ];
 
-			if ( empty( $result['success'] ) ) {
-				return $this->fail_direct_email( $result['error'] ?? 'Unknown error' );
-			}
+		$this->mark_sent( $this->current_email_id, $result );
+		$this->result_recorded = true;
 
-			$this->record_direct_email_result( $result );
+		do_action( 'insanemailer_email_sent', $this->current_email_id, $result );
+	}
 
-			do_action( 'insanemailer_email_sent', $this->current_direct_email_id, $result );
-
-			return true;
-		} catch ( Exception $e ) {
-			return $this->fail_direct_email( $e->getMessage() );
+	public function handle_wp_mail_failed( $error ) {
+		if ( ! $this->current_email_id || $this->result_recorded ) {
+			return;
 		}
+
+		$message = is_wp_error( $error ) ? $error->get_error_message() : (string) $error;
+
+		$this->mark_failed( $this->current_email_id, $message );
+		$this->result_recorded = true;
+
+		do_action( 'insanemailer_email_failed', $this->current_email_id, $message );
 	}
 
 	/**
-	 * Record a direct-send failure and mirror it onto wp_mail_failed, which
-	 * callers rely on for the reason a send did not go through.
+	 * Record a provider failure and mirror it onto wp_mail_failed, which callers
+	 * rely on for the reason a send did not go through.
 	 */
-	private function fail_direct_email( $error ) {
-		$this->update_direct_email_status( 'failed', $error );
+	private function fail_email( $error, $result = [] ) {
+		$this->mark_failed( $this->current_email_id, $error, $result );
+		$this->result_recorded = true;
 
-		do_action( 'insanemailer_email_failed', $this->current_direct_email_id, $error );
+		do_action( 'insanemailer_email_failed', $this->current_email_id, $error );
 
 		do_action(
 			'wp_mail_failed',
@@ -157,232 +183,154 @@ class INSANEMAILER_Mailer {
 		return false;
 	}
 
-	public function intercept_phpmailer( $phpmailer ) {
-		// Only apply from settings in direct mode
-		$this->send_direct( $phpmailer );
-	}
+	/**
+	 * Send an already logged message again and update its row in place.
+	 *
+	 * Shared by the resend endpoint and the one-time drain of emails left over
+	 * from queue mode.
+	 *
+	 * @param object $email Row from the emails table.
+	 * @return array Provider result, with at least a 'success' key.
+	 */
+	public function send_logged_email( $email ) {
+		$headers     = json_decode( $email->headers, true );
+		$attachments = json_decode( $email->attachments, true );
 
-	private function should_bypass_queue() {
-		$priority_bypass = $this->settings['priority_bypass'] ?? [];
-
-		if ( empty( $priority_bypass ) ) {
-			return false;
-		}
-
-		global $wp_current_filter;
-
-		foreach ( $priority_bypass as $hook ) {
-			if ( in_array( $hook, (array) $wp_current_filter, true ) ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private function queue_from_atts( $atts ) {
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'insanemailer_emails';
-
-		$to          = $atts['to'] ?? '';
-		$subject     = $atts['subject'] ?? '';
-		$message     = $atts['message'] ?? '';
-		$headers     = $atts['headers'] ?? [];
-		$attachments = $atts['attachments'] ?? [];
-
-		// Parse to address
-		$to_email = '';
-		$to_name  = '';
-		if ( is_array( $to ) ) {
-			$to_email = $to[0] ?? '';
-		} else {
-			// Parse "Name <email>" format
-			if ( preg_match( '/^(.+)\s*<(.+)>$/', $to, $matches ) ) {
-				$to_name  = trim( $matches[1] );
-				$to_email = trim( $matches[2] );
-			} else {
-				$to_email = $to;
-			}
-		}
-
-		// Parse headers
-		$parsed_headers = [];
-		$from_email     = $this->settings['from_email'] ?? get_option( 'admin_email' );
-		$from_name      = $this->settings['from_name'] ?? get_option( 'blogname' );
-		$reply_to       = null;
-		$content_type   = 'text/plain';
-
-		if ( ! is_array( $headers ) ) {
-			$headers = explode( "\n", str_replace( "\r\n", "\n", $headers ) );
-		}
-
-		foreach ( $headers as $header ) {
-			if ( empty( $header ) ) {
-				continue;
-			}
-
-			if ( is_array( $header ) ) {
-				$key   = $header[0] ?? '';
-				$value = $header[1] ?? '';
-			} else {
-				list( $key, $value ) = array_pad( explode( ':', $header, 2 ), 2, '' ); // phpcs:ignore Universal.Lists.DisallowLongListSyntax.Found
-			}
-
-			$key   = trim( $key );
-			$value = trim( $value );
-
-			if ( strcasecmp( $key, 'From' ) === 0 && empty( $this->settings['force_from'] ) ) {
-				if ( preg_match( '/^(.+)\s*<(.+)>$/', $value, $matches ) ) {
-					$from_name  = trim( $matches[1] );
-					$from_email = trim( $matches[2] );
-				} else {
-					$from_email = $value;
-				}
-			} elseif ( strcasecmp( $key, 'Reply-To' ) === 0 ) {
-				$reply_to = $value;
-			} elseif ( strcasecmp( $key, 'Content-Type' ) === 0 ) {
-				$content_type = $value;
-			} else {
-				$parsed_headers[ $key ] = $value;
-			}
-		}
-
-		$is_html    = stripos( $content_type, 'text/html' ) !== false;
-		$body_html  = $is_html ? $message : '';
-		$body_plain = $is_html ? '' : $message;
-
-		if ( $is_html && ! empty( $this->settings['auto_plain_text'] ) ) {
-			$body_plain = $this->html_to_plain( $message );
-		}
-
-		$priority = 2;
-		$priority = apply_filters( 'insanemailer_priority', $priority, $to_email, $atts );
-
-		$status = ! empty( $this->settings['pause_sending'] ) ? 'paused' : 'pending';
-
-		$data = [
-			'status'       => $status,
-			'send_mode'    => 'queue',
-			'priority'     => $priority,
-			'to_email'     => $to_email,
-			'to_name'      => $to_name,
-			'from_email'   => $from_email,
-			'from_name'    => $from_name,
-			'reply_to'     => $reply_to,
-			'subject'      => $subject,
-			'body_html'    => $body_html,
-			'body_plain'   => $body_plain,
-			'headers'      => wp_json_encode( $parsed_headers ),
-			'attachments'  => wp_json_encode( [] ),
-			'attempts'     => 0,
-			'max_attempts' => $this->settings['max_retries'] ?? 3,
-			'scheduled_at' => current_time( 'mysql' ),
-			'created_at'   => current_time( 'mysql' ),
-			'updated_at'   => current_time( 'mysql' ),
+		$mail_data = [
+			'to'          => [
+				'email' => $email->to_email,
+				'name'  => $email->to_name,
+			],
+			'from'        => [
+				'email' => $email->from_email,
+				'name'  => $email->from_name,
+			],
+			'reply_to'    => $email->reply_to,
+			'subject'     => $email->subject,
+			'body_html'   => $email->body_html,
+			'body_plain'  => $email->body_plain,
+			'headers'     => is_array( $headers ) ? $headers : [],
+			'attachments' => is_array( $attachments ) ? $attachments : [],
 		];
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table for email queue.
-		$inserted = $wpdb->insert( $table_name, $data );
+		$provider_name = $this->get_provider_slug();
 
-		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
-
-		if ( $inserted ) {
-			$email_id = $wpdb->insert_id;
-
-			if ( ! empty( $attachments ) ) {
-				$this->handle_attachments( $email_id, (array) $attachments );
-			}
-
-			do_action( 'insanemailer_email_queued', $email_id, $data );
+		if ( 'default' === $provider_name ) {
+			$result = $this->send_via_wp_mail( $mail_data );
+		} else {
+			$result = $this->send_via_provider( $provider_name, $mail_data );
 		}
+
+		// The row may predate the provider column, or have been sent by a
+		// provider that has since been swapped out.
+		$this->record_provider( $email->id, $provider_name );
+
+		if ( ! empty( $result['success'] ) ) {
+			$this->mark_sent( $email->id, $result );
+			do_action( 'insanemailer_email_sent', $email->id, $result );
+		} else {
+			$error = $result['error'] ?? 'Unknown error';
+			$this->mark_failed( $email->id, $error, $result );
+			do_action( 'insanemailer_email_failed', $email->id, $error );
+		}
+
+		return $result;
 	}
 
-	private function send_direct( $phpmailer ) {
-		if ( ! empty( $this->settings['force_from'] ) ) {
-			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
-			$phpmailer->From     = $this->settings['from_email'] ?? $phpmailer->From;
-			$phpmailer->FromName = $this->settings['from_name'] ?? $phpmailer->FromName;
-			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-		}
-
-		$provider = $this->settings['provider'] ?? 'default';
-
-		// Default provider uses WordPress's native wp_mail without modification
-		if ( 'default' === $provider || 'smtp' === $provider ) {
-			return;
-		}
-
-		$phpmailer->isSMTP();
-		// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
-		$phpmailer->Host       = 'localhost';
-		$phpmailer->SMTPAuth   = false;
-		$phpmailer->SMTPSecure = '';
-		$phpmailer->Port       = 25;
-		// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-
-		add_action( 'phpmailer_init', [ $this, 'send_via_api' ], 1000 );
+	private function get_provider_slug() {
+		return $this->settings['provider'] ?? 'default';
 	}
 
-	public function send_via_api( $phpmailer ) {
-		$provider_name = $this->settings['provider'] ?? 'default';
-
-		// Default and SMTP providers don't use API
-		if ( 'default' === $provider_name || 'smtp' === $provider_name ) {
-			return;
-		}
-
+	/**
+	 * Deliver a message through a provider class.
+	 *
+	 * @param string $provider_name Provider slug.
+	 * @param array  $mail_data     Message, in the send_raw() shape.
+	 * @return array Provider result.
+	 */
+	private function send_via_provider( $provider_name, $mail_data ) {
 		$provider_class = $this->get_provider_class( $provider_name );
 
 		if ( ! $provider_class ) {
-			$this->update_direct_email_status( 'failed', 'Provider class not found' );
-			return;
+			return [
+				'success' => false,
+				'error'   => 'Provider class not found',
+			];
 		}
 
 		try {
 			$provider = new $provider_class( $this->settings['credentials'] ?? [] );
 
-			// Prepare mail_data from PHPMailer object.
-			// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer properties.
-			$to_email = '';
-			$to_name  = '';
-			if ( ! empty( $phpmailer->getToAddresses() ) ) {
-				$to_address = $phpmailer->getToAddresses()[0];
-				$to_email   = $to_address[0] ?? '';
-				$to_name    = $to_address[1] ?? '';
-			}
-
-			$mail_data = [
-				'to'          => [
-					'email' => $to_email,
-					'name'  => $to_name,
-				],
-				'from'        => [
-					'email' => $phpmailer->From,
-					'name'  => $phpmailer->FromName,
-				],
-				'reply_to'    => ! empty( $phpmailer->getReplyToAddresses() ) ? array_key_first( $phpmailer->getReplyToAddresses() ) : '',
-				'subject'     => $phpmailer->Subject,
-				'body_html'   => $phpmailer->Body,
-				'body_plain'  => $phpmailer->AltBody,
-				'headers'     => [],
-				'attachments' => $phpmailer->getAttachments(),
-			];
-			// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-
-			$result = $provider->send_raw( $mail_data );
-
-			if ( ! $result['success'] ) {
-				throw new Exception( $result['error'] ?? 'Unknown error' );
-			}
-
-			$this->record_direct_email_result( $result );
-
-			do_action( 'insanemailer_email_sent', $this->current_direct_email_id, $result );
+			return $provider->send_raw( $mail_data );
 		} catch ( Exception $e ) {
-			$this->update_direct_email_status( 'failed', $e->getMessage() );
-			do_action( 'insanemailer_email_failed', $this->current_direct_email_id, $e->getMessage() );
+			return [
+				'success' => false,
+				'error'   => $e->getMessage(),
+			];
 		}
+	}
+
+	/**
+	 * Re-send a logged message through PHPMailer for the default provider.
+	 *
+	 * Our own pre_wp_mail filter is detached for the duration so the message is
+	 * not logged a second time.
+	 *
+	 * @param array $mail_data Message, in the send_raw() shape.
+	 * @return array Result, in the send_raw() shape.
+	 */
+	private function send_via_wp_mail( $mail_data ) {
+		$to = $mail_data['to']['email'];
+
+		if ( ! empty( $mail_data['to']['name'] ) ) {
+			$to = sprintf( '%s <%s>', $mail_data['to']['name'], $mail_data['to']['email'] );
+		}
+
+		$headers = [];
+
+		if ( ! empty( $mail_data['from']['email'] ) ) {
+			$from = $mail_data['from']['email'];
+			if ( ! empty( $mail_data['from']['name'] ) ) {
+				$from = sprintf( '%s <%s>', $mail_data['from']['name'], $mail_data['from']['email'] );
+			}
+			$headers[] = 'From: ' . $from;
+		}
+
+		if ( ! empty( $mail_data['reply_to'] ) ) {
+			$headers[] = 'Reply-To: ' . $mail_data['reply_to'];
+		}
+
+		if ( ! empty( $mail_data['body_html'] ) ) {
+			$headers[] = 'Content-Type: text/html; charset=UTF-8';
+		}
+
+		foreach ( $mail_data['headers'] as $key => $value ) {
+			$headers[] = $key . ': ' . $value;
+		}
+
+		$body = ! empty( $mail_data['body_html'] ) ? $mail_data['body_html'] : $mail_data['body_plain'];
+
+		remove_filter( 'pre_wp_mail', [ $this, 'handle_mail' ], 10 );
+
+		$sent = wp_mail( $to, $mail_data['subject'], $body, $headers, $mail_data['attachments'] );
+
+		add_filter( 'pre_wp_mail', [ $this, 'handle_mail' ], 10, 2 );
+
+		if ( $sent ) {
+			return [ 'success' => true ];
+		}
+
+		global $phpmailer;
+		$error = 'Unknown error';
+		if ( isset( $phpmailer ) && $phpmailer instanceof PHPMailer\PHPMailer\PHPMailer ) {
+			// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer property.
+			$error = $phpmailer->ErrorInfo;
+		}
+
+		return [
+			'success' => false,
+			'error'   => $error,
+		];
 	}
 
 	private function get_provider_class( $provider_name ) {
@@ -471,8 +419,48 @@ class INSANEMAILER_Mailer {
 		return $text;
 	}
 
-	private function record_direct_email_result( $result ) {
-		if ( ! $this->current_direct_email_id ) {
+	private function record_provider( $email_id, $provider_name ) {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated by the status write that follows.
+		$wpdb->update(
+			$wpdb->prefix . 'insanemailer_emails',
+			[ 'provider' => $provider_name ],
+			[ 'id' => $email_id ],
+			[ '%s' ],
+			[ '%d' ]
+		);
+	}
+
+	private function mark_sent( $email_id, $result ) {
+		if ( ! $email_id ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'insanemailer_emails';
+		$now        = current_time( 'mysql' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
+		$wpdb->update(
+			$table_name,
+			[
+				'status'            => 'sent',
+				'sent_at'           => $now,
+				'message_id'        => $result['message_id'] ?? null,
+				'provider_response' => wp_json_encode( $result ),
+				'updated_at'        => $now,
+			],
+			[ 'id' => $email_id ],
+			[ '%s', '%s', '%s', '%s', '%s' ],
+			[ '%d' ]
+		);
+
+		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
+	}
+
+	private function mark_failed( $email_id, $error, $result = [] ) {
+		if ( ! $email_id ) {
 			return;
 		}
 
@@ -483,48 +471,49 @@ class INSANEMAILER_Mailer {
 		$wpdb->update(
 			$table_name,
 			[
-				'message_id'        => $result['message_id'] ?? null,
+				'status'            => 'failed',
+				'error_message'     => $error,
 				'provider_response' => wp_json_encode( $result ),
 				'updated_at'        => current_time( 'mysql' ),
 			],
-			[ 'id' => $this->current_direct_email_id ],
-			[ '%s', '%s', '%s' ],
+			[ 'id' => $email_id ],
+			[ '%s', '%s', '%s', '%s' ],
 			[ '%d' ]
 		);
 
 		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 	}
 
-	private function update_direct_email_status( $status, $error = null ) {
-		if ( ! $this->current_direct_email_id ) {
+	private function update_email_status( $email_id, $status ) {
+		if ( ! $email_id ) {
 			return;
 		}
 
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'insanemailer_emails';
 
-		$data = [
-			'status'     => $status,
-			'updated_at' => current_time( 'mysql' ),
-		];
-
-		if ( $error ) {
-			$data['error_message'] = $error;
-		}
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, cache invalidated below.
 		$wpdb->update(
 			$table_name,
-			$data,
-			[ 'id' => $this->current_direct_email_id ],
-			array_fill( 0, count( $data ), '%s' ),
+			[
+				'status'     => $status,
+				'updated_at' => current_time( 'mysql' ),
+			],
+			[ 'id' => $email_id ],
+			[ '%s', '%s' ],
 			[ '%d' ]
 		);
 
 		wp_cache_delete( 'insanemailer_queue_stats', 'insane_mailer' );
 	}
 
-	private function log_direct_email( $atts ) {
+	/**
+	 * Write the log row for an outgoing message and return its parsed contents.
+	 *
+	 * @param array $atts wp_mail() arguments.
+	 * @return array Message, in the send_raw() shape.
+	 */
+	private function log_email( $atts ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'insanemailer_emails';
@@ -589,7 +578,7 @@ class INSANEMAILER_Mailer {
 			}
 		}
 
-		// An API send bypasses wp_mail()'s own sender pipeline, so run the core
+		// A provider send bypasses wp_mail()'s own sender pipeline, so run the core
 		// sender filters here to keep third-party overrides working.
 		$from_email = apply_filters( 'wp_mail_from', $from_email );
 		$from_name  = apply_filters( 'wp_mail_from_name', $from_name );
@@ -605,25 +594,20 @@ class INSANEMAILER_Mailer {
 		$now = current_time( 'mysql' );
 
 		$data = [
-			'status'       => 'completed',
-			'send_mode'    => 'direct',
-			'priority'     => 2,
-			'to_email'     => $to_email,
-			'to_name'      => $to_name,
-			'from_email'   => $from_email,
-			'from_name'    => $from_name,
-			'reply_to'     => $reply_to,
-			'subject'      => $subject,
-			'body_html'    => $body_html,
-			'body_plain'   => $body_plain,
-			'headers'      => wp_json_encode( $parsed_headers ),
-			'attachments'  => wp_json_encode( [] ),
-			'attempts'     => 1,
-			'max_attempts' => 1,
-			'scheduled_at' => $now,
-			'sent_at'      => $now,
-			'created_at'   => $now,
-			'updated_at'   => $now,
+			'status'      => 'sending',
+			'to_email'    => $to_email,
+			'to_name'     => $to_name,
+			'from_email'  => $from_email,
+			'from_name'   => $from_name,
+			'reply_to'    => $reply_to,
+			'subject'     => $subject,
+			'body_html'   => $body_html,
+			'body_plain'  => $body_plain,
+			'headers'     => wp_json_encode( $parsed_headers ),
+			'attachments' => wp_json_encode( [] ),
+			'provider'    => $this->get_provider_slug(),
+			'created_at'  => $now,
+			'updated_at'  => $now,
 		];
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table for email logging.
@@ -638,7 +622,7 @@ class INSANEMAILER_Mailer {
 				$this->handle_attachments( $email_id, (array) $attachments );
 			}
 
-			$this->current_direct_email_id = $email_id;
+			$this->current_email_id = $email_id;
 		}
 
 		return [

@@ -1,7 +1,8 @@
 # Insane Mailer
 
-WordPress plugin: queue-powered SMTP and API email delivery with logs, retries and
-bounce handling. PHP 7.4+, WordPress 6.2+, SolidJS admin UI built with Vite.
+WordPress plugin: SMTP and API email delivery with logs and bounce handling. Every
+message is sent immediately — there is no queue and no send-mode setting. PHP 7.4+,
+WordPress 6.2+, SolidJS admin UI built with Vite.
 
 ## Working agreement
 
@@ -17,9 +18,9 @@ bounce handling. PHP 7.4+, WordPress 6.2+, SolidJS admin UI built with Vite.
 ```
 insane-mailer.php        Bootstrap: constants, activation hooks, plugins_loaded init
 includes/
-  Mailer.php             wp_mail interception, direct-send path, email logging
-  Queue.php              Queued sending, retries, locking
-  Cron.php               Scheduled queue runner
+  Mailer.php             wp_mail interception, provider dispatch, email logging
+  Cleanup.php            Daily log retention and attachment GC
+  QueueDrain.php         One-time drain of emails left over from queue mode
   Admin.php              Admin page, script localisation, REST controller loading
   Activator.php          Table schema, default settings, legacy im_ -> insanemailer_
   Providers/             One class per email provider
@@ -67,9 +68,8 @@ Missing one fails a different code path each time, so work through all of them.
 
 1. `includes/Providers/<Name>.php` extending `INSANEMAILER_Abstract_Provider`.
    Implement `get_name()`, `send_raw( $mail_data )`, `test_connection()`.
-2. Slug to class map in **all three**: `Mailer.php` (direct send),
-   `Queue.php` (queued send), `Rest/SettingsController.php` (connection test).
-   Use the same slug in each.
+2. Slug to class map in **both**: `Mailer.php` (sending) and
+   `Rest/SettingsController.php` (connection test). Use the same slug in each.
 3. Display name in `SettingsController::$provider_names`.
 4. Constant map in **all three** copies: `Admin.php`,
    `SettingsController::get_credentials_with_constants()`, and
@@ -115,18 +115,29 @@ containing that key.
 
 There is no cc/bcc support and no per-provider capability metadata.
 
-## Send paths
+## Send path
 
-- **Direct** — `pre_wp_mail` logs the message, then API providers send over HTTP
-  and short-circuit, so PHPMailer is never involved. `default` and `smtp` return
-  null and fall through to PHPMailer as usual.
-- **Queue** — `pre_wp_mail` writes a row and returns true; `Queue::process()`
-  picks it up on cron.
+There is one path. `Mailer::handle_mail()` on `pre_wp_mail` logs the message with
+`status = 'sending'`, then:
 
-The configured sender is applied via `wp_mail_from` / `wp_mail_from_name`, not
-only at `phpmailer_init`. WordPress calls `setFrom()` before that hook fires, and
-its `wordpress@<host>` default is rejected outright on a host without a dot, which
-fails the send before any provider is reached.
+- `pause_sending` on → the row becomes `paused`, nothing is delivered, `true` is
+  returned so callers still see a success.
+- provider `default` → returns null and PHPMailer runs; the row is closed out by
+  the `wp_mail_succeeded` / `wp_mail_failed` listeners.
+- every other provider, **`smtp` included** → `send_raw()` over the provider class,
+  which short-circuits `wp_mail()`. Letting it continue would attempt a second
+  delivery and report a false failure for a message already accepted.
+
+`Mailer::send_logged_email( $row )` re-sends a row that is already in the log; it
+backs both the resend endpoint and `QueueDrain`. For `default` it calls `wp_mail()`
+with our own `pre_wp_mail` filter detached, so the message is not logged twice.
+
+Statuses: `sending`, `sent`, `failed`, `paused`, `bounced`, `complained`.
+
+The plugin does not hook `phpmailer_init` at all. The configured sender is applied
+via `wp_mail_from` / `wp_mail_from_name`, because WordPress calls `setFrom()` before
+`phpmailer_init` fires, and its `wordpress@<host>` default is rejected outright on a
+host without a dot, which fails the send before any provider is reached.
 
 ## Documentation surfaces
 
@@ -163,20 +174,18 @@ When testing sends, use a real inbox you control. Never send to `example.com` or
 against the sending domain's reputation.
 
 Settings live in the `insanemailer_settings` option; logs in
-`{prefix}insanemailer_emails`. `INSANEMAILER_Mailer` caches settings in its
+`{prefix}insanemailer_emails`. Upgrades run through `INSANEMAILER_Activator::activate()`,
+which `insanemailer_maybe_upgrade()` fires whenever `INSANEMAILER_VERSION` is ahead of
+the stored `insanemailer_db_version` — that is the hook for any schema or settings
+migration. `INSANEMAILER_Mailer` caches settings in its
 constructor, so changing the option mid-request does not affect the current
 send — use a fresh process when testing different providers.
 
 ## Known issues
 
-- Netcore is registered as `netcore` in `Mailer.php` and `Queue.php` but
-  `pepipost` in `SettingsController.php`, and the UI ships `pepipost`. It passes
-  the connection test, then fails at send time.
+- Netcore is registered as `netcore` in `Mailer.php` but `pepipost` in
+  `SettingsController.php`, and the UI ships `pepipost`. It passes the connection
+  test, then fails at send time.
 - `Provider.jsx` and `Setup.jsx` key Mailtrap's logo and constants as
   `mailtraim`, so it renders no logo and no wp-config constants.
-- `send_direct()` / `send_via_api()` on `phpmailer_init` are unreachable for API
-  providers now that direct sends short-circuit `pre_wp_mail`.
-- Queue mode resolves the sender itself and does not apply the `wp_mail_from`
-  filters, so third-party sender overrides are ignored there.
-- The `provider` column on the log table is never written, so
-  `StatsController::get_provider_stats()` always reports `default`.
+- `includes/Helpers/Attachment.php` is never required by anything.
