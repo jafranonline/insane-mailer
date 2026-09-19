@@ -15,5 +15,6 @@ excludes:
     - "*.zip"
     - "**/.DS_Store"
     - .DS_Store
+root: insane-mailer
 compression: 9
 max_file_size: 10MB
