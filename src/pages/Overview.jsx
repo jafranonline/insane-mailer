@@ -100,9 +100,9 @@ export default function Overview(props) {
         {/* Provider Configuration */}
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5 im:relative">
           <button
-            onClick={() => props.onSwitchTab('advanced', 'provider')}
+            onClick={() => props.onSwitchTab('settings', 'sender')}
             class="im:absolute im:top-3 im:right-3 im:p-1.5 im:text-gray-400 hover:im:text-gray-600 im:rounded-md hover:im:bg-gray-100 im:transition-colors"
-            title="Edit provider settings"
+            title="Edit sender settings"
           >
             <svg class="im:w-4 im:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -148,9 +148,9 @@ export default function Overview(props) {
         {/* Sending */}
         <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-5 im:relative">
           <button
-            onClick={() => props.onSwitchTab('advanced')}
+            onClick={() => props.onSwitchTab('settings', 'preferences')}
             class="im:absolute im:top-3 im:right-3 im:p-1.5 im:text-gray-400 hover:im:text-gray-600 im:rounded-md hover:im:bg-gray-100 im:transition-colors"
-            title="Edit advanced settings"
+            title="Edit preferences"
           >
             <svg class="im:w-4 im:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -158,10 +158,6 @@ export default function Overview(props) {
           </button>
           <h3 class="im:text-sm im:font-semibold im:text-gray-900 im:mb-4">Sending</h3>
           <div class="im:space-y-3">
-            <div class="im:flex im:items-center im:justify-between">
-              <span class="im:text-sm im:text-gray-500">Delivery</span>
-              <span class="im:text-sm im:font-medium im:text-gray-900">Immediate</span>
-            </div>
             <div class="im:flex im:items-center im:justify-between">
               <span class="im:text-sm im:text-gray-500">Plain Text Fallback</span>
               <span class="im:text-sm im:font-medium im:text-gray-900">{settings().auto_plain_text ? 'On' : 'Off'}</span>

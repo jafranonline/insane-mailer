@@ -1,13 +1,17 @@
 import { render } from 'solid-js/web';
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, onCleanup } from 'solid-js';
 import './index.css';
 import Overview from './pages/Overview';
-import Advanced from './pages/Advanced';
+import Settings from './pages/Settings';
 import Logs from './pages/Logs';
 import Docs from './pages/Docs';
 import Setup from './pages/Setup';
 import ToastContainer from './components/Toast';
 import { useSettings } from './store/settings';
+import { api } from './api/client';
+
+// Old sub-tab slugs, kept working for bookmarks and links predating the rename.
+const legacySubTabs = { provider: 'sender', general: 'preferences', tools: 'import-export' };
 
 function App() {
   const parseHash = () => {
@@ -16,7 +20,12 @@ function App() {
 
     // Provider used to be a top-level tab; keep old links and bookmarks working.
     if (tab === 'provider') {
-      return { tab: 'advanced', subTab: 'provider' };
+      return { tab: 'settings', subTab: 'sender' };
+    }
+
+    // The Settings tab used to be called "advanced".
+    if (tab === 'advanced') {
+      return { tab: 'settings', subTab: legacySubTabs[subTab] || subTab || null };
     }
 
     return { tab: tab || 'overview', subTab: subTab || null };
@@ -27,6 +36,8 @@ function App() {
 
   const [currentTab, setCurrentTab] = createSignal(getInitialTab());
   const [currentSubTab, setCurrentSubTab] = createSignal(getInitialSubTab());
+  const [connectionStatus, setConnectionStatus] = createSignal(null);
+  const [connectionLoading, setConnectionLoading] = createSignal(true);
   const settings = useSettings();
   const isPaused = () => settings()?.pause_sending || false;
   const needsSetup = () => !settings()?.setup_completed && settings()?.provider === 'default';
@@ -40,6 +51,29 @@ function App() {
   onMount(() => {
     if (needsSetup() && currentTab() !== 'setup') {
       switchTab('setup');
+    }
+  });
+
+  // Keep the tab state in sync with browser back/forward navigation, which
+  // changes window.location.hash without going through switchTab().
+  onMount(() => {
+    const handleHashChange = () => {
+      const { tab, subTab } = parseHash();
+      setCurrentTab(tab);
+      setCurrentSubTab(subTab);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    onCleanup(() => window.removeEventListener('hashchange', handleHashChange));
+  });
+
+  onMount(async () => {
+    try {
+      const result = await api.getConnectionStatus();
+      setConnectionStatus(result.data?.status ?? null);
+    } catch (error) {
+      console.error('Failed to fetch connection status:', error);
+    } finally {
+      setConnectionLoading(false);
     }
   });
 
@@ -59,7 +93,7 @@ function App() {
         <div class="im:bg-red-600 im:text-white im:py-2 im:px-4 im:text-sm im:font-medium im:flex im:items-center im:justify-center im:gap-3">
           <span>Email sending is paused. Emails are being logged but not delivered.</span>
           <button
-            onClick={() => switchTab('advanced')}
+            onClick={() => switchTab('settings', 'preferences')}
             class="im:px-2.5 im:py-1 im:bg-white im:text-red-600 im:rounded im:text-xs im:font-semibold hover:im:bg-red-50 im:transition-colors"
           >
             Settings
@@ -89,48 +123,98 @@ function App() {
               </h1>
             </div>
 
-            <nav class="im:flex im:gap-1">
+            <div class="im:flex im:items-center im:gap-3">
               <button
-                class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
-                  currentTab() === 'overview'
-                    ? 'im:bg-gray-100 im:text-gray-900'
-                    : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
+                type="button"
+                onClick={() => switchTab('settings', 'sender')}
+                title={
+                  missingSender()
+                    ? 'Sender details are not set'
+                    : connectionLoading()
+                      ? 'Checking connection...'
+                      : connectionStatus() === 'success'
+                        ? 'Connected'
+                        : connectionStatus() === 'error'
+                          ? 'Connection failed'
+                          : 'Connection not tested'
+                }
+                class={`im:flex im:items-center im:gap-1.5 im:px-2.5 im:py-1 im:rounded-full im:border im:text-xs im:font-medium im:transition-colors ${
+                  missingSender()
+                    ? 'im:bg-amber-50 im:border-amber-200 im:text-amber-700 hover:im:bg-amber-100'
+                    : connectionStatus() === 'success'
+                      ? 'im:bg-green-50 im:border-green-200 im:text-green-700 hover:im:bg-green-100'
+                      : connectionStatus() === 'error'
+                        ? 'im:bg-red-50 im:border-red-200 im:text-red-700 hover:im:bg-red-100'
+                        : 'im:bg-gray-50 im:border-gray-200 im:text-gray-600 hover:im:bg-gray-100'
                 }`}
-                onClick={() => switchTab('overview')}
               >
-                Overview
+                <span
+                  class={`im:w-1.5 im:h-1.5 im:rounded-full im:shrink-0 ${
+                    connectionLoading()
+                      ? 'im:bg-gray-400 im:animate-pulse'
+                      : missingSender()
+                        ? 'im:bg-amber-500'
+                        : connectionStatus() === 'success'
+                          ? 'im:bg-green-500'
+                          : connectionStatus() === 'error'
+                            ? 'im:bg-red-500'
+                            : 'im:bg-gray-400'
+                  }`}
+                />
+                {connectionLoading()
+                  ? 'Checking...'
+                  : missingSender()
+                    ? 'Sender not set'
+                    : connectionStatus() === 'success'
+                      ? 'Connected'
+                      : connectionStatus() === 'error'
+                        ? 'Connection failed'
+                        : 'Not tested'}
               </button>
-              <button
-                class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
-                  currentTab() === 'advanced'
-                    ? 'im:bg-gray-100 im:text-gray-900'
-                    : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
-                }`}
-                onClick={() => switchTab('advanced')}
-              >
-                Settings
-              </button>
-              <button
-                class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
-                  currentTab() === 'logs'
-                    ? 'im:bg-gray-100 im:text-gray-900'
-                    : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
-                }`}
-                onClick={() => switchTab('logs')}
-              >
-                Logs
-              </button>
-              <button
-                class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
-                  currentTab() === 'docs'
-                    ? 'im:bg-gray-100 im:text-gray-900'
-                    : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
-                }`}
-                onClick={() => switchTab('docs')}
-              >
-                Docs
-              </button>
-            </nav>
+
+              <nav class="im:flex im:gap-1">
+                <button
+                  class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
+                    currentTab() === 'overview'
+                      ? 'im:bg-gray-100 im:text-gray-900'
+                      : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
+                  }`}
+                  onClick={() => switchTab('overview')}
+                >
+                  Overview
+                </button>
+                <button
+                  class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
+                    currentTab() === 'settings'
+                      ? 'im:bg-gray-100 im:text-gray-900'
+                      : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
+                  }`}
+                  onClick={() => switchTab('settings')}
+                >
+                  Settings
+                </button>
+                <button
+                  class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
+                    currentTab() === 'logs'
+                      ? 'im:bg-gray-100 im:text-gray-900'
+                      : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
+                  }`}
+                  onClick={() => switchTab('logs')}
+                >
+                  Logs
+                </button>
+                <button
+                  class={`im:px-4 im:py-2 im:text-sm im:font-medium im:rounded-md im:transition-colors ${
+                    currentTab() === 'docs'
+                      ? 'im:bg-gray-100 im:text-gray-900'
+                      : 'im:text-gray-500 hover:im:text-gray-900 hover:im:bg-gray-50'
+                  }`}
+                  onClick={() => switchTab('docs')}
+                >
+                  Docs
+                </button>
+              </nav>
+            </div>
           </div>
         </div>
       </div>
@@ -148,7 +232,7 @@ function App() {
                 </span>
               </div>
               <button
-                onClick={() => switchTab('advanced', 'provider')}
+                onClick={() => switchTab('settings', 'sender')}
                 class="im:px-3 im:py-1.5 im:bg-red-600 im:text-white im:rounded im:text-sm im:font-medium hover:im:bg-red-700 im:transition-colors im:shrink-0 im:ml-4"
               >
                 Set Sender
@@ -178,7 +262,7 @@ function App() {
         </Show>
         <div class="im:max-w-7xl im:mx-auto im:px-8 im:py-12">
           {currentTab() === 'overview' && <Overview onSwitchTab={switchTab} />}
-          {currentTab() === 'advanced' && <Advanced subTab={currentSubTab()} onSubTabChange={(sub) => switchTab('advanced', sub)} />}
+          {currentTab() === 'settings' && <Settings subTab={currentSubTab()} onSubTabChange={(sub) => switchTab('settings', sub)} />}
           {currentTab() === 'logs' && <Logs />}
           {currentTab() === 'docs' && <Docs />}
         </div>

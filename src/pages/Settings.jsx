@@ -1,14 +1,14 @@
 import { createSignal, Show } from 'solid-js';
 import { api } from '../api/client';
-import Provider from './Provider';
+import Sender from './Provider';
 import SearchableSelect from '../components/SearchableSelect';
 import { toast } from '../components/Toast';
 import { useSettings, updateSettings as updateGlobalSettings } from '../store/settings';
 
-// The fields this screen owns. The Provider tab writes to the same option and
+// The fields this screen owns. The Sender tab writes to the same option and
 // stays mounted alongside us, so a save here must not carry a stale copy of
 // anything it touches.
-const generalKeys = ['auto_delete_days', 'pause_sending'];
+const preferencesKeys = ['auto_delete_days', 'auto_plain_text', 'pause_sending'];
 
 const autoDeleteOptions = [
   { value: '7', label: '7 days' },
@@ -19,7 +19,7 @@ const autoDeleteOptions = [
   { value: '0', label: 'Never' },
 ];
 
-export default function Advanced(props) {
+export default function Settings(props) {
   const globalSettings = useSettings();
   const [settings, setSettings] = createSignal(globalSettings() || null);
   const [saving, setSaving] = createSignal(false);
@@ -29,7 +29,7 @@ export default function Advanced(props) {
   const [showResetConfirm, setShowResetConfirm] = createSignal(false);
   let fileInputRef;
 
-  const activeTab = () => props.subTab || 'provider';
+  const activeTab = () => props.subTab || 'sender';
   const setActiveTab = (tab) => props.onSubTabChange?.(tab);
 
   const handleSave = async (e) => {
@@ -38,7 +38,7 @@ export default function Advanced(props) {
 
     try {
       const payload = { ...globalSettings() };
-      generalKeys.forEach((key) => {
+      preferencesKeys.forEach((key) => {
         payload[key] = settings()[key];
       });
 
@@ -121,42 +121,42 @@ export default function Advanced(props) {
         <nav class="im:flex im:gap-6 im:-mb-px">
           <button
             type="button"
-            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'provider' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
-            onClick={() => setActiveTab('provider')}
+            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'sender' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
+            onClick={() => setActiveTab('sender')}
           >
-            Provider
+            Sender
           </button>
           <button
             type="button"
-            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'general' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
-            onClick={() => setActiveTab('general')}
+            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'preferences' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
+            onClick={() => setActiveTab('preferences')}
           >
-            General
+            Preferences
           </button>
           <button
             type="button"
-            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'tools' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
-            onClick={() => setActiveTab('tools')}
+            class={`im:py-3 im:text-sm im:font-medium im:border-b-2 im:transition-colors ${activeTab() === 'import-export' ? 'im:border-gray-900 im:text-gray-900' : 'im:border-transparent im:text-gray-500 hover:im:text-gray-700 hover:im:border-gray-300'}`}
+            onClick={() => setActiveTab('import-export')}
           >
-            Tools
+            Import / Export
           </button>
         </nav>
       </div>
 
-      {/* Provider Tab */}
-      <Show when={activeTab() === 'provider'}>
-        <Provider />
+      {/* Sender Tab */}
+      <Show when={activeTab() === 'sender'}>
+        <Sender />
       </Show>
 
       {settings() && (
         <>
-          {/* General Tab */}
-          <Show when={activeTab() === 'general'}>
+          {/* Preferences Tab */}
+          <Show when={activeTab() === 'preferences'}>
             <form onSubmit={handleSave}>
               <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
               <div class="im:space-y-6">
                 <div>
-                  <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">General Settings</h3>
+                  <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">Preferences</h3>
                   <p class="im:text-sm im:text-gray-500 im:mb-4">Configure general email settings</p>
                 </div>
 
@@ -171,6 +171,30 @@ export default function Advanced(props) {
                     placeholder="Select duration..."
                   />
                   <p class="im:text-xs im:text-gray-500 im:mt-1">Automatically delete old email logs</p>
+                </div>
+
+                <div class="im:border-t im:border-gray-200 im:pt-6">
+                  <div class="im:flex im:items-start im:gap-4">
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('auto_plain_text', !settings().auto_plain_text)}
+                      class={`im:relative im:inline-flex im:h-6 im:w-11 im:flex-shrink-0 im:cursor-pointer im:rounded-full im:border-2 im:border-transparent im:transition-colors im:duration-200 im:ease-in-out ${
+                        settings().auto_plain_text ? 'im:bg-gray-900' : 'im:bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        class={`im:pointer-events-none im:inline-block im:h-5 im:w-5 im:transform im:rounded-full im:bg-white im:shadow im:ring-0 im:transition im:duration-200 im:ease-in-out ${
+                          settings().auto_plain_text ? 'im:translate-x-5' : 'im:translate-x-0'
+                        }`}
+                      />
+                    </button>
+                    <div class="im:flex-1" onClick={() => updateSetting('auto_plain_text', !settings().auto_plain_text)}>
+                      <span class="im:text-sm im:font-medium im:text-gray-900 im:cursor-pointer">Plain Text Fallback</span>
+                      <p class="im:text-sm im:text-gray-500 im:mt-1 im:cursor-pointer">
+                        Automatically generate a plain-text version of HTML emails for clients that don't render HTML.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="im:border-t im:border-gray-200 im:pt-6">
@@ -210,7 +234,7 @@ export default function Advanced(props) {
                   </Show>
                 </div>
               </div>
-            
+
               </div>
 
               <div class="im:flex im:items-center im:gap-3 im:mt-6">
@@ -225,12 +249,12 @@ export default function Advanced(props) {
             </form>
           </Show>
 
-          {/* Tools Tab */}
-          <Show when={activeTab() === 'tools'}>
+          {/* Import / Export Tab */}
+          <Show when={activeTab() === 'import-export'}>
             <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
               <div class="im:space-y-6">
                 <div>
-                  <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">Settings Tools</h3>
+                  <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1">Import / Export</h3>
                   <p class="im:text-sm im:text-gray-500 im:mb-4">Export, import, or reset your settings</p>
                 </div>
 

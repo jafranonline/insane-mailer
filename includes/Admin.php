@@ -38,7 +38,7 @@ class INSANEMAILER_Admin {
 			return;
 		}
 
-		$settings_url = admin_url( 'options-general.php?page=insane-mailer#advanced' );
+		$settings_url = admin_url( 'options-general.php?page=insane-mailer#settings/preferences' );
 		?>
 		<div class="notice notice-warning is-dismissible">
 			<p>
