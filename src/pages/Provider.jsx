@@ -215,6 +215,34 @@ const encryptionOptions = [
   { value: 'tls', label: 'TLS' },
 ];
 
+// Providers whose bounce/complaint webhooks the plugin accepts. A missing label
+// means the provider signs its requests itself and needs no shared secret.
+const webhookConfig = {
+  ses: {
+    help: 'Create an SNS topic subscribed to this HTTPS endpoint and attach it to your SES bounce and complaint notifications. Signatures are verified automatically.',
+  },
+  mailgun: {
+    label: 'Webhook signing key',
+    placeholder: 'Signing key',
+    help: 'Found under Sending → Webhooks → HTTP webhook signing key in your Mailgun dashboard.',
+  },
+  sendgrid: {
+    label: 'Verification key',
+    placeholder: 'Public verification key',
+    help: 'Enable Signed Event Webhook in Mail Settings → Event Webhook and paste the public verification key.',
+  },
+  postmark: {
+    label: 'Webhook password',
+    placeholder: 'Password',
+    help: 'In Postmark, set the webhook URL to https://insanemailer:YOUR-PASSWORD@your-site/… so it sends Basic Auth with this password.',
+  },
+  sparkpost: {
+    label: 'Webhook token',
+    placeholder: 'Token',
+    help: 'In SparkPost, set the webhook\'s Authentication to Basic Auth (any username, this token as password) or OAuth 2.0 with this token.',
+  },
+};
+
 export default function Settings() {
   const globalSettings = useSettings();
   const [settings, setSettings] = createSignal(globalSettings() || null);
@@ -289,6 +317,27 @@ export default function Settings() {
       setTimeout(() => {
         document.getElementById('provider-config')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
+    }
+  };
+
+  const updateWebhookSecret = (value) => {
+    setSettings({
+      ...settings(),
+      webhook_secrets: { ...(settings().webhook_secrets || {}), [settings().provider]: value },
+    });
+  };
+
+  const webhookUrl = () => {
+    const base = (window.insaneMailerAdmin?.restUrl || '').replace(/\/+$/, '');
+    return `${base}/webhook/${settings().provider}`;
+  };
+
+  const copyWebhookUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(webhookUrl());
+      toast.success('Copied');
+    } catch (error) {
+      toast.error('Could not copy to clipboard');
     }
   };
 
@@ -936,6 +985,54 @@ export default function Settings() {
                   </Match>
                 </Switch>
               </div>
+            </div>
+          </Show>
+
+          <Show when={webhookConfig[settings().provider]}>
+            <div class="im:bg-white im:rounded-lg im:border im:border-gray-200 im:p-6">
+              <h3 class="im:text-base im:font-semibold im:text-gray-900 im:mb-1 im:pb-0">Bounce & Complaint Webhook</h3>
+              <p class="im:text-sm im:text-gray-500 im:mb-6">
+                Requests that fail verification are rejected, so nothing is updated until the secret matches.
+              </p>
+
+              <div class="im:mb-5">
+                <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Webhook URL</label>
+                <div class="im:flex im:gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={webhookUrl()}
+                    onFocus={(e) => e.target.select()}
+                    class="im:flex-1 im:px-3 im:py-2 im:border im:border-gray-300 im:rounded-md im:text-sm im:bg-gray-50 im:text-gray-700 im:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyWebhookUrl}
+                    class="im:px-3 im:py-2 im:bg-gray-100 im:text-gray-700 im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-200 im:transition-colors im:shrink-0"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              <Show
+                when={webhookConfig[settings().provider].label}
+                fallback={
+                  <p class="im:text-xs im:text-gray-500">{webhookConfig[settings().provider].help}</p>
+                }
+              >
+                <div class="im:max-w-md">
+                  <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">
+                    {webhookConfig[settings().provider].label}
+                  </label>
+                  <PasswordInput
+                    value={settings().webhook_secrets?.[settings().provider] || ''}
+                    onInput={(e) => updateWebhookSecret(e.target.value)}
+                    placeholder={webhookConfig[settings().provider].placeholder}
+                  />
+                  <p class="im:text-xs im:text-gray-500 im:mt-1">{webhookConfig[settings().provider].help}</p>
+                </div>
+              </Show>
             </div>
           </Show>
 

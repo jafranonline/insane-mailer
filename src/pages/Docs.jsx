@@ -13,6 +13,7 @@ const providerTabs = [
   { id: 'sendgrid', label: 'SendGrid', icon: '📨' },
   { id: 'brevo', label: 'Brevo', icon: '💙' },
   { id: 'postmark', label: 'Postmark', icon: '📮' },
+  { id: 'sparkpost', label: 'SparkPost', icon: '✨' },
   { id: 'cloudflare', label: 'Cloudflare', icon: '🟠' },
   { id: 'smtp', label: 'Generic SMTP', icon: '📬' },
 ];
@@ -49,6 +50,12 @@ const providerDocs = {
       { name: 'Secret Access Key', desc: 'Shown once when creating access key' },
       { name: 'Region', desc: 'AWS region where your SES is configured' },
     ],
+    webhook: [
+      'Copy the webhook URL from Settings > Sender > Bounce & Complaint Webhook',
+      'In SNS, create a topic and add an HTTPS subscription pointing at that URL; the plugin confirms the subscription automatically',
+      'In SES, open your verified identity > Notifications and attach the topic to Bounce and Complaint feedback',
+      'No secret is needed: every SNS message is checked against its Amazon signing certificate',
+    ],
     links: [
       { label: 'AWS SES Console', url: 'https://console.aws.amazon.com/ses/' },
       { label: 'IAM Console', url: 'https://console.aws.amazon.com/iam/' },
@@ -69,6 +76,11 @@ const providerDocs = {
       { name: 'Domain', desc: 'Your verified sending domain (e.g., mg.yourdomain.com)' },
       { name: 'Region', desc: 'US or EU based on your Mailgun account region' },
     ],
+    webhook: [
+      'Copy the webhook URL from Settings > Sender > Bounce & Complaint Webhook',
+      'In Mailgun go to Sending > Webhooks for your domain and add the URL for Permanent Failure and Spam Complaints',
+      'Copy the HTTP webhook signing key shown on the same page into the Webhook signing key field and save',
+    ],
     links: [
       { label: 'Mailgun Dashboard', url: 'https://app.mailgun.com/' },
       { label: 'API Keys', url: 'https://app.mailgun.com/settings/api_security' },
@@ -85,6 +97,11 @@ const providerDocs = {
     ],
     credentials: [
       { name: 'API Key', desc: 'Created in Settings > API Keys with Mail Send access' },
+    ],
+    webhook: [
+      'Copy the webhook URL from Settings > Sender > Bounce & Complaint Webhook',
+      'In SendGrid go to Settings > Mail Settings > Event Webhook, paste the URL and enable the Bounced, Dropped and Spam Report events',
+      'Turn on Signed Event Webhook and paste the public verification key into the Verification key field, then save',
     ],
     links: [
       { label: 'SendGrid Dashboard', url: 'https://app.sendgrid.com/' },
@@ -120,8 +137,34 @@ const providerDocs = {
     credentials: [
       { name: 'Server Token', desc: 'Found in Server > API Tokens' },
     ],
+    webhook: [
+      'Copy the webhook URL from Settings > Sender > Bounce & Complaint Webhook',
+      'Choose a password and enter it in the Webhook password field, then save',
+      'In Postmark open your server > Webhooks, add the URL as https://insanemailer:YOUR-PASSWORD@your-site/... and enable Bounce and Spam Complaint',
+    ],
     links: [
       { label: 'Postmark Dashboard', url: 'https://account.postmarkapp.com/' },
+    ],
+  },
+  sparkpost: {
+    title: 'SparkPost Setup',
+    steps: [
+      'Sign up or log in at sparkpost.com',
+      'Add and verify your sending domain',
+      'Go to Configuration > API Keys and create a key with Transmissions: Read/Write',
+      'Copy the API key to plugin settings',
+    ],
+    credentials: [
+      { name: 'API Key', desc: 'Created in Configuration > API Keys with Transmissions access' },
+    ],
+    webhook: [
+      'Copy the webhook URL from Settings > Sender > Bounce & Complaint Webhook',
+      'Choose a token and enter it in the Webhook token field, then save',
+      'In SparkPost go to Configuration > Webhooks, add the URL and enable the Bounce, Out of Band, Policy Rejection and Spam Complaint events',
+      'Set Authentication to Basic Auth (any username, the token as password) or OAuth 2.0 with the same token',
+    ],
+    links: [
+      { label: 'SparkPost Dashboard', url: 'https://app.sparkpost.com/' },
     ],
   },
   cloudflare: {
@@ -345,6 +388,22 @@ export default function Docs() {
           </Show>
 
           {/* Tips */}
+          <Show when={providerDocs[activeProvider()]?.webhook}>
+            <div class="im:mb-6">
+              <h4 class="im:text-sm im:font-medium im:text-gray-700 im:mb-3">Bounce tracking webhook</h4>
+              <ol class="im:space-y-1.5">
+                <For each={providerDocs[activeProvider()]?.webhook || []}>
+                  {(step, index) => (
+                    <li class="im:flex im:gap-2 im:text-sm im:text-gray-600">
+                      <span class="im:text-gray-400 im:shrink-0">{index() + 1}.</span>
+                      {step}
+                    </li>
+                  )}
+                </For>
+              </ol>
+            </div>
+          </Show>
+
           <Show when={providerDocs[activeProvider()]?.tips}>
             <div class="im:mb-6">
               <h4 class="im:text-sm im:font-medium im:text-gray-700 im:mb-3">Tips</h4>

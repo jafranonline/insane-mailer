@@ -168,6 +168,27 @@ across the admin screens and a "Not set" flag on the Overview card and the Sende
 Details panel. Without a valid sender WordPress falls back to `wordpress@<host>`,
 which many providers reject.
 
+## Webhooks
+
+`POST /insane-mailer/v1/webhook/<provider>` is public by necessity but every
+request is authenticated in `Rest/WebhookController.php` before anything is read
+or written: SES by verifying the SNS message signature against the certificate
+on `sns.<region>.amazonaws.com`; Mailgun (HMAC signing key), SendGrid (ECDSA
+verification key), Postmark (Basic Auth password) and SparkPost (Basic Auth or
+Bearer token) against `settings['webhook_secrets'][<provider>]`. A provider
+with no secret configured is rejected with 401. Secrets are entered on the
+Sender tab's "Bounce & Complaint Webhook" card (`webhookConfig` in
+`Provider.jsx`) and are masked like credentials by `INSANEMAILER_Settings`.
+
+## Settings option
+
+`INSANEMAILER_Settings` (`includes/Settings.php`) is the only place that knows
+which keys the `insanemailer_settings` option accepts, how they are sanitized
+and which credential keys are secrets. Every writer (REST update, import,
+migration) calls `sanitize()` + `restore_masked()`; every reader that returns
+the option to the browser calls `mask()`. Add new keys there, not in the
+controllers.
+
 ## Documentation surfaces
 
 | File | Audience | Update when |
