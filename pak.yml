@@ -10,6 +10,7 @@ excludes:
     - pak.yml
     - postcss.config.js
     - phpcs.xml
+    - CLAUDE.md
     - assets/*.map
 compression: 9
 max_file_size: 10MB
