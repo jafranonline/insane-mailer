@@ -948,6 +948,9 @@ export default function Setup({ onComplete }) {
                           onInput={(e) => updateCredential('client_secret', e.target.value)}
                         />
                       </div>
+                      <p class="im:text-xs im:text-gray-500">
+                        After finishing setup, open Settings → Sender and click Connect to authorize your account.
+                      </p>
                     </div>
                   </Match>
 

@@ -200,9 +200,8 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 		];
 	}
 
-	public function get_auth_url() {
-		$client_id    = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
-		$redirect_uri = admin_url( 'admin.php?page=insane-mailer&oauth=outlook' );
+	public function get_auth_url( $redirect_uri, $state ) {
+		$client_id = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
 
 		$params = [
 			'client_id'     => $client_id,
@@ -210,15 +209,15 @@ class INSANEMAILER_Provider_Outlook extends INSANEMAILER_Abstract_Provider {
 			'response_type' => 'code',
 			'scope'         => 'https://graph.microsoft.com/Mail.Send offline_access',
 			'response_mode' => 'query',
+			'state'         => $state,
 		];
 
 		return 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' . http_build_query( $params );
 	}
 
-	public function handle_oauth_callback( $code ) {
+	public function handle_oauth_callback( $code, $redirect_uri ) {
 		$client_id     = $this->get_credential_any( [ 'client_id', 'outlook_client_id' ] );
 		$client_secret = $this->get_credential_any( [ 'client_secret', 'outlook_client_secret' ] );
-		$redirect_uri  = admin_url( 'admin.php?page=insane-mailer&oauth=outlook' );
 
 		$result = $this->make_request(
 			'https://login.microsoftonline.com/common/oauth2/v2.0/token',

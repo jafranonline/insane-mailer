@@ -257,7 +257,33 @@ export default function Settings() {
   const [saveError, setSaveError] = createSignal(null);
   const [constants, setConstants] = createSignal(window.insaneMailerAdmin?.constants || {});
 
+  // Google / Microsoft send the browser back with the outcome in the query string.
+  const consumeOAuthResult = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('insanemailer_oauth');
+    if (!status) return;
+
+    const message = decodeURIComponent(params.get('insanemailer_oauth_msg') || '');
+    if (status === 'success') {
+      toast.success(message || 'Account connected');
+      try {
+        const fresh = await api.getSettings();
+        setSettings(fresh.data);
+        updateGlobalSettings(fresh.data);
+      } catch (error) {
+        console.error('Failed to refresh settings:', error);
+      }
+    } else {
+      toast.error(message || 'Authorization failed');
+    }
+
+    ['insanemailer_oauth', 'insanemailer_oauth_msg', 'insanemailer_oauth_prov'].forEach((key) => params.delete(key));
+    const query = params.toString();
+    history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  };
+
   onMount(async () => {
+    await consumeOAuthResult();
     try {
       const result = await api.getConnectionStatus();
       if (result.data?.status) {
@@ -283,7 +309,7 @@ export default function Settings() {
       }
       // Update global settings store
       updateGlobalSettings(settings());
-      toast.success('Settings saved');
+      toast.success(response.data?.needs_authorization ? response.data.message : 'Settings saved');
     } catch (error) {
       setConnectionStatus('error');
       setSaveError(error.message || 'Failed to save settings');
@@ -340,6 +366,110 @@ export default function Settings() {
       toast.error('Could not copy to clipboard');
     }
   };
+
+  const oauthRedirectUri = () => window.insaneMailerAdmin?.oauthRedirectUri || '';
+  const oauthConnected = () => !!settings().credentials?.[`${settings().provider}_access_token`];
+  const oauthClientReady = () =>
+    (!!getCredential('client_id') || !!constants().client_id || !!constants()[`${settings().provider}_client_id`]) &&
+    (!!getCredential('client_secret') || !!constants().client_secret || !!constants()[`${settings().provider}_client_secret`]);
+  const [connecting, setConnecting] = createSignal(false);
+
+  const copyRedirectUri = async () => {
+    try {
+      await navigator.clipboard.writeText(oauthRedirectUri());
+      toast.success('Copied');
+    } catch (error) {
+      toast.error('Could not copy to clipboard');
+    }
+  };
+
+  const startOAuth = async () => {
+    setConnecting(true);
+    try {
+      const res = await api.getOAuthUrl(settings().provider);
+      window.location.href = res.data.url;
+    } catch (error) {
+      toast.error(error.message || 'Could not start authorization');
+      setConnecting(false);
+    }
+  };
+
+  const disconnectOAuth = async () => {
+    setConnecting(true);
+    try {
+      const res = await api.disconnectOAuth(settings().provider);
+      setSettings(res.data.settings);
+      updateGlobalSettings(res.data.settings);
+      setConnectionStatus(null);
+      toast.success(res.data.message || 'Account disconnected');
+    } catch (error) {
+      toast.error(error.message || 'Could not disconnect');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const OAuthAccount = (props) => (
+    <div class="im:mt-6 im:pt-6 im:border-t im:border-gray-200 im:space-y-4">
+      <div>
+        <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Redirect URI</label>
+        <div class="im:flex im:gap-2">
+          <input
+            type="text"
+            readOnly
+            value={oauthRedirectUri()}
+            onFocus={(e) => e.target.select()}
+            class="im:flex-1 im:px-3 im:py-2 im:border im:border-gray-300 im:rounded-md im:text-sm im:bg-gray-50 im:text-gray-700 im:outline-none"
+          />
+          <button
+            type="button"
+            onClick={copyRedirectUri}
+            class="im:px-3 im:py-2 im:bg-gray-100 im:text-gray-700 im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-200 im:transition-colors im:shrink-0"
+          >
+            Copy
+          </button>
+        </div>
+        <p class="im:text-xs im:text-gray-500 im:mt-1">{props.redirectHelp}</p>
+      </div>
+
+      <div>
+        <label class="im:block im:text-sm im:font-medium im:text-gray-700 im:mb-2">Account</label>
+        <Show
+          when={oauthConnected()}
+          fallback={
+            <div class="im:flex im:items-center im:gap-3">
+              <button
+                type="button"
+                onClick={startOAuth}
+                disabled={!oauthClientReady() || connecting()}
+                class="im:px-4 im:py-2 im:bg-gray-900 im:text-white im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-800 im:transition-colors disabled:im:opacity-50 disabled:im:cursor-not-allowed"
+              >
+                {connecting() ? 'Redirecting...' : props.connectLabel}
+              </button>
+              <Show when={!oauthClientReady()}>
+                <span class="im:text-xs im:text-gray-500">Save your Client ID and Client Secret first</span>
+              </Show>
+            </div>
+          }
+        >
+          <div class="im:flex im:items-center im:gap-3">
+            <span class="im:inline-flex im:items-center im:gap-1.5 im:px-2.5 im:py-1 im:rounded-full im:bg-green-50 im:border im:border-green-200 im:text-green-700 im:text-xs im:font-medium">
+              <span class="im:w-1.5 im:h-1.5 im:rounded-full im:bg-green-500" />
+              Connected
+            </span>
+            <button
+              type="button"
+              onClick={disconnectOAuth}
+              disabled={connecting()}
+              class="im:px-3 im:py-1.5 im:bg-gray-100 im:text-gray-700 im:rounded-md im:text-sm im:font-medium hover:im:bg-gray-200 im:transition-colors disabled:im:opacity-50"
+            >
+              Disconnect
+            </button>
+          </div>
+        </Show>
+      </div>
+    </div>
+  );
 
   const handleSaveSender = async () => {
     setSavingSender(true);
@@ -838,6 +968,10 @@ export default function Settings() {
                           />
                         </div>
                       </div>
+                      <OAuthAccount
+                        connectLabel="Connect Google account"
+                        redirectHelp="Add this as an Authorized redirect URI in your Google Cloud OAuth client."
+                      />
                     </Match>
 
                     <Match when={settings().provider === 'outlook'}>
@@ -860,6 +994,10 @@ export default function Settings() {
                           />
                         </div>
                       </div>
+                      <OAuthAccount
+                        connectLabel="Connect Microsoft account"
+                        redirectHelp="Add this as a Web redirect URI in your Azure app registration."
+                      />
                     </Match>
 
                     <Match when={settings().provider === 'smtp'}>

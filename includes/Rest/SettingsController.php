@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/Controller.php';
+require_once INSANEMAILER_PLUGIN_DIR . 'includes/Rest/OAuthController.php';
 
 class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller {
 
@@ -153,6 +154,22 @@ class INSANEMAILER_Rest_Settings_Controller extends INSANEMAILER_Rest_Controller
 		$credentials = $new_settings['credentials'] ?? [];
 		$connection_valid = true;
 		$connection_error = '';
+
+		// Gmail and Outlook cannot be tested until the account is connected, and
+		// connecting needs the client credentials saved first.
+		if ( isset( INSANEMAILER_Rest_OAuth_Controller::PROVIDERS[ $provider ] ) && ! INSANEMAILER_Rest_OAuth_Controller::has_access_token( $provider, $credentials ) ) {
+			update_option( 'insanemailer_settings', $new_settings );
+			delete_transient( 'insanemailer_connection_status' );
+
+			return $this->success_response(
+				[
+					'message'             => 'Settings saved. Connect your account to finish.',
+					'settings'            => INSANEMAILER_Settings::mask( $new_settings ),
+					'connection_valid'    => false,
+					'needs_authorization' => true,
+				]
+			);
+		}
 
 		if ( 'default' !== $provider ) {
 			$credentials = $this->get_credentials_with_constants( $credentials );

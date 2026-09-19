@@ -216,9 +216,8 @@ class INSANEMAILER_Provider_Gmail extends INSANEMAILER_Abstract_Provider {
 		];
 	}
 
-	public function get_auth_url() {
-		$client_id    = $this->get_credential_any( [ 'client_id', 'gmail_client_id' ] );
-		$redirect_uri = admin_url( 'admin.php?page=insane-mailer&oauth=gmail' );
+	public function get_auth_url( $redirect_uri, $state ) {
+		$client_id = $this->get_credential_any( [ 'client_id', 'gmail_client_id' ] );
 
 		$params = [
 			'client_id'     => $client_id,
@@ -227,15 +226,15 @@ class INSANEMAILER_Provider_Gmail extends INSANEMAILER_Abstract_Provider {
 			'scope'         => 'https://www.googleapis.com/auth/gmail.send',
 			'access_type'   => 'offline',
 			'prompt'        => 'consent',
+			'state'         => $state,
 		];
 
 		return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query( $params );
 	}
 
-	public function handle_oauth_callback( $code ) {
+	public function handle_oauth_callback( $code, $redirect_uri ) {
 		$client_id     = $this->get_credential_any( [ 'client_id', 'gmail_client_id' ] );
 		$client_secret = $this->get_credential_any( [ 'client_secret', 'gmail_client_secret' ] );
-		$redirect_uri  = admin_url( 'admin.php?page=insane-mailer&oauth=gmail' );
 
 		$result = $this->make_request(
 			'https://oauth2.googleapis.com/token',

@@ -15,6 +15,8 @@ const providerTabs = [
   { id: 'postmark', label: 'Postmark', icon: '📮' },
   { id: 'sparkpost', label: 'SparkPost', icon: '✨' },
   { id: 'cloudflare', label: 'Cloudflare', icon: '🟠' },
+  { id: 'gmail', label: 'Gmail', icon: '✉️' },
+  { id: 'outlook', label: 'Outlook', icon: '📧' },
   { id: 'smtp', label: 'Generic SMTP', icon: '📬' },
 ];
 
@@ -167,6 +169,52 @@ const providerDocs = {
       { label: 'SparkPost Dashboard', url: 'https://app.sparkpost.com/' },
     ],
   },
+  gmail: {
+    title: 'Gmail / Google Workspace Setup',
+    steps: [
+      'In Google Cloud Console, create or select a project and enable the Gmail API under APIs & Services > Library',
+      'Go to APIs & Services > Credentials > Create credentials > OAuth client ID, and choose Web application',
+      'Copy the Redirect URI shown on Settings > Sender (Gmail) and add it as an Authorized redirect URI',
+      'Paste the Client ID and Client Secret into the plugin and click Save Settings',
+      'Click "Connect Google account", sign in and approve the gmail.send permission',
+      'Set From Email to the Gmail or Workspace address you signed in with',
+    ],
+    credentials: [
+      { name: 'Client ID', desc: 'From the OAuth client in Google Cloud Console' },
+      { name: 'Client Secret', desc: 'From the same OAuth client' },
+    ],
+    tips: [
+      'If the OAuth consent screen is in Testing mode, add your Google account as a test user or the sign-in is refused',
+      'Use Disconnect and reconnect if Google revokes the token after a password change',
+    ],
+    links: [
+      { label: 'Google Cloud Console', url: 'https://console.cloud.google.com/apis/credentials' },
+    ],
+  },
+
+  outlook: {
+    title: 'Outlook / Microsoft 365 Setup',
+    steps: [
+      'In the Azure portal open Microsoft Entra ID > App registrations > New registration',
+      'Under Redirect URI choose Web and paste the Redirect URI shown on Settings > Sender (Outlook)',
+      'Copy the Application (client) ID, then create a client secret under Certificates & secrets',
+      'Under API permissions add Microsoft Graph > Delegated > Mail.Send',
+      'Paste the Client ID and Client Secret into the plugin and click Save Settings',
+      'Click "Connect Microsoft account", sign in and approve the Mail.Send permission',
+    ],
+    credentials: [
+      { name: 'Client ID', desc: 'Application (client) ID from the app registration overview' },
+      { name: 'Client Secret', desc: 'Secret value (not the secret ID) from Certificates & secrets' },
+    ],
+    tips: [
+      'Choose "Accounts in any organizational directory and personal Microsoft accounts" if you sign in with a personal Outlook.com address',
+      'Client secrets expire; create a new one and reconnect before the expiry date',
+    ],
+    links: [
+      { label: 'Azure App registrations', url: 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade' },
+    ],
+  },
+
   cloudflare: {
     title: 'Cloudflare Email Service Setup',
     steps: [

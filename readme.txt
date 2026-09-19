@@ -121,7 +121,7 @@ Use a dedicated email provider like Amazon SES, SendGrid, or Mailgun. Configure 
 
 = How do I set up Gmail SMTP in WordPress? =
 
-Select Gmail as your provider in Settings > Insane Mailer, create OAuth credentials in your Google account, and paste the client ID and secret. Insane Mailer handles the token exchange so your WordPress emails send from your Gmail or Google Workspace address.
+Select Gmail as your provider in Settings > Insane Mailer > Sender, create an OAuth client in Google Cloud Console with the redirect URI shown on that screen, paste the client ID and secret, save, then click Connect and sign in with your Google account. Insane Mailer stores and refreshes the tokens so your WordPress emails send from your Gmail or Google Workspace address.
 
 = How do I use Amazon SES with WordPress? =
 

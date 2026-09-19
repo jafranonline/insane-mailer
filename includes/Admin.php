@@ -85,13 +85,14 @@ class INSANEMAILER_Admin {
 				'insanemailer-admin',
 				'insaneMailerAdmin',
 				[
-					'restUrl'   => rest_url( 'insane-mailer/v1' ),
-					'nonce'     => wp_create_nonce( 'wp_rest' ),
-					'adminUrl'  => admin_url(),
-					'siteUrl'   => site_url(),
-					'pluginUrl' => INSANEMAILER_PLUGIN_URL,
-					'settings'  => $this->get_settings_for_frontend(),
-					'constants' => $this->get_defined_constants(),
+					'restUrl'          => rest_url( 'insane-mailer/v1' ),
+					'nonce'            => wp_create_nonce( 'wp_rest' ),
+					'adminUrl'         => admin_url(),
+					'siteUrl'          => site_url(),
+					'pluginUrl'        => INSANEMAILER_PLUGIN_URL,
+					'oauthRedirectUri' => rest_url( 'insane-mailer/v1/oauth/callback' ),
+					'settings'         => $this->get_settings_for_frontend(),
+					'constants'        => $this->get_defined_constants(),
 				]
 			);
 		}
@@ -196,6 +197,7 @@ class INSANEMAILER_Admin {
 			'Webhook',
 			'Migration',
 			'Stats',
+			'OAuth',
 		];
 
 		foreach ( $controllers as $controller ) {

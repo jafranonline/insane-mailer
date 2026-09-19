@@ -180,6 +180,22 @@ with no secret configured is rejected with 401. Secrets are entered on the
 Sender tab's "Bounce & Complaint Webhook" card (`webhookConfig` in
 `Provider.jsx`) and are masked like credentials by `INSANEMAILER_Settings`.
 
+## Gmail / Outlook OAuth
+
+`Rest/OAuthController.php`. Saving Gmail or Outlook without an access token
+stores the client credentials and returns `needs_authorization` instead of
+running the connection test. `GET /oauth/<provider>/url` issues a random
+single-use `state` (transient, 10 min, bound to the admin) and returns the
+provider's consent URL; the provider redirects to the public
+`GET /oauth/callback`, which only acts when `state` matches, exchanges the code,
+stores `<provider>_access_token` / `<provider>_refresh_token` in credentials,
+runs `test_connection()` into the connection-status transient and redirects to
+`options-general.php?page=insane-mailer&insanemailer_oauth=success|error…#settings/sender`,
+which `Provider.jsx` turns into a toast. The redirect URI users must register is
+`rest_url( 'insane-mailer/v1/oauth/callback' )` (exposed as
+`insaneMailerAdmin.oauthRedirectUri`). `POST /oauth/<provider>/disconnect`
+drops the tokens.
+
 ## Settings option
 
 `INSANEMAILER_Settings` (`includes/Settings.php`) is the only place that knows

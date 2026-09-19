@@ -109,6 +109,12 @@ export const api = {
     body: JSON.stringify({ settings }),
   }),
 
+  getOAuthUrl: (provider) => request(`/oauth/${provider}/url`),
+
+  disconnectOAuth: (provider) => request(`/oauth/${provider}/disconnect`, {
+    method: 'POST',
+  }),
+
   resetSettings: () => request('/settings/reset', {
     method: 'POST',
   }),
